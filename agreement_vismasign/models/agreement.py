@@ -55,11 +55,22 @@ class Agreement(models.Model):
 
         file_uuid = backend.add_file(document_uuid, self.name, pdf)
         invitation_data = backend.send_invitation(document_uuid, self.partner_id.email)
+        inv_uuid = False
+        inv_status = False
+
+        if isinstance(invitation_data, list) and invitation_data:
+            inv_uuid = invitation_data[0].get("uuid")
+            inv_status = invitation_data[0].get("status")
+        elif isinstance(invitation_data, dict):
+            inv_uuid = invitation_data.get("uuid")
+            inv_status = invitation_data.get("status")
 
         self.write({
             "vismasign_document_uuid": document_uuid,
             "vismasign_file_uuid": file_uuid,
-            #"vismasign_invitation_uuid": invitation_uuid,
+            "vismasign_invitation_uuid": inv_uuid,
+            "vismasign_status": inv_status,
+            "vismasign_last_check": fields.Datetime.now(),
         })
 
         _logger.info(
