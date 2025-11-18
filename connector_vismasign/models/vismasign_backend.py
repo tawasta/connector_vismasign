@@ -232,3 +232,47 @@ class VismaSignBackend(models.Model):
             )
 
         return response_data
+
+    def get_invitation_status(self, invitation_uuid):
+        """
+        GET /api/v1/invitation/{invitation_uuid}
+
+        Palauttaa kutsun (invitation) statuksen ja perusdatan Visma Signista.
+        """
+        self.ensure_one()
+        path = f"/api/v1/invitation/{invitation_uuid}"
+
+        binding = self.env["vismasign.binding"].create({
+            "backend_id": self.id,
+            "method": "GET",
+            "endpoint": path,
+        })
+
+        response = self._request("GET", path)
+
+        try:
+            data = response.json()
+            response_text = json.dumps(data, ensure_ascii=False, indent=2)
+        except ValueError:
+            data = {}
+            response_text = response.text
+
+        binding.write({
+            "status_code": response.status_code,
+            "response": response_text,
+            "successful": response.status_code == 200,
+        })
+
+        if response.status_code != 200:
+            raise UserError(
+                _("Visma Sign get invitation status failed: %s\n%s")
+                % (response.status_code, response.text)
+            )
+
+        _logger.info(
+            "Visma Sign invitation %s status response: %s",
+            invitation_uuid,
+            data,
+        )
+        return data
+
