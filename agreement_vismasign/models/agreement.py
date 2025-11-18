@@ -65,13 +65,15 @@ class Agreement(models.Model):
             inv_uuid = invitation_data.get("uuid")
             inv_status = invitation_data.get("status")
 
-        self.write({
-            "vismasign_document_uuid": document_uuid,
-            "vismasign_file_uuid": file_uuid,
-            "vismasign_invitation_uuid": inv_uuid,
-            "vismasign_status": inv_status,
-            "vismasign_last_check": fields.Datetime.now(),
-        })
+        self.write(
+            {
+                "vismasign_document_uuid": document_uuid,
+                "vismasign_file_uuid": file_uuid,
+                "vismasign_invitation_uuid": inv_uuid,
+                "vismasign_status": inv_status,
+                "vismasign_last_check": fields.Datetime.now(),
+            }
+        )
 
         _logger.info(
             "Agreement %s sent to Visma Sign, document %s, file %s",
@@ -88,10 +90,12 @@ class Agreement(models.Model):
         """
         backends = self.env["vismasign.backend"].search([])
         for backend in backends:
-            agreements = self.search([
-                ("vismasign_invitation_uuid", "!=", False),
-                ("company_id", "=", backend.company_id.id),
-            ])
+            agreements = self.search(
+                [
+                    ("vismasign_invitation_uuid", "!=", False),
+                    ("company_id", "=", backend.company_id.id),
+                ]
+            )
 
             for agreement in agreements:
                 try:
@@ -107,10 +111,12 @@ class Agreement(models.Model):
                     continue
 
                 status = data.get("status")
-                agreement.write({
-                    "vismasign_status": status,
-                    "vismasign_last_check": fields.Datetime.now(),
-                })
+                agreement.write(
+                    {
+                        "vismasign_status": status,
+                        "vismasign_last_check": fields.Datetime.now(),
+                    }
+                )
 
                 _logger.info(
                     "Updated Visma Sign status for agreement %s to %s",

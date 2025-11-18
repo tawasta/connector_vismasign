@@ -6,17 +6,19 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_test_connection"
-                            type="object"
-                            string="Test Connection"
-                            class="btn-primary"/>
+                    <button
+                        name="action_test_connection"
+                        type="object"
+                        string="Test Connection"
+                        class="btn-primary"
+                    />
                 </header>
                 <sheet>
                     <group>
-                        <field name="base_url"/>
-                        <field name="client_identifier"/>
-                        <field name="secret_key_b64"/>
-                        <field name="company_id"/>
+                        <field name="base_url" />
+                        <field name="client_identifier" />
+                        <field name="secret_key_b64" />
+                        <field name="company_id" />
                     </group>
                 </sheet>
             </form>
@@ -28,8 +30,8 @@
         <field name="model">vismasign.backend</field>
         <field name="arch" type="xml">
             <tree>
-                <field name="company_id"/>
-                <field name="base_url"/>
+                <field name="company_id" />
+                <field name="base_url" />
             </tree>
         </field>
     </record>
@@ -40,9 +42,11 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_vismasign_root" name="Visma Sign"/>
-    <menuitem id="menu_vismasign_backend"
-              name="Backends"
-              parent="menu_vismasign_root"
-              action="action_vismasign_backend"/>
+    <menuitem id="menu_vismasign_root" name="Visma Sign" />
+    <menuitem
+        id="menu_vismasign_backend"
+        name="Backends"
+        parent="menu_vismasign_root"
+        action="action_vismasign_backend"
+    />
 </odoo>
