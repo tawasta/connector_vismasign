@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_agreement_report_template" model="ir.actions.report">
+        <field name="name">Agreement</field>
+        <field name="model">agreement</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">agreement_vismasign.agreement_report_template</field>
+        <field name="report_file">agreement_vismasign.agreement_report_template</field>
+        <field name="print_report_name">'Agreement - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="agreement.model_agreement"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="agreement_report_template_document">
+        <div>
+            <h1>Agreement Report for <t t-esc="agreement.name"/></h1>
+        </div>
+    </template>
+
+    <template id="agreement_report_template">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="agreement">
+                <t t-call="agreement_vismasign.agreement_report_template_document"/>
+            </t>
+        </t>
+    </template>
+</odoo>

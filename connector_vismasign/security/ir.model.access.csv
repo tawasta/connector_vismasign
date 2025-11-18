@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id,perm_read,perm_write,perm_create,perm_unlink
+access_vismasign_backend,vismasign.backend,model_vismasign_backend,,1,1,1,1
+access_vismasign_binding,vismasign.binding,model_vismasign_binding,,1,1,1,1
