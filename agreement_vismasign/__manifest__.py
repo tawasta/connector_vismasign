@@ -32,6 +32,7 @@
         "connector_vismasign",
     ],
     "data": [
+        "data/ir_cron.xml",
         "report/agreement_reports.xml",
     ],
 }
