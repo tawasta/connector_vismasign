@@ -28,9 +28,7 @@ class VismaSignBackend(models.Model):
         required=True,
         default=lambda self: self.env.company,
     )
-    binding_ids = fields.One2many(
-        "vismasign.binding", "backend_id", readonly=True
-    )
+    binding_ids = fields.One2many("vismasign.binding", "backend_id", readonly=True)
 
     @api.constrains("base_url")
     def _check_base_url(self):
@@ -61,9 +59,7 @@ class VismaSignBackend(models.Model):
         url = f"{self.base_url}{path}"
         headers = self._build_headers(method, path, body, content_type)
         try:
-            resp = requests.request(
-                method, url, headers=headers, data=body, timeout=30
-            )
+            resp = requests.request(method, url, headers=headers, data=body, timeout=30)
         except requests.RequestException as e:
             raise UserError(str(e))
         return resp
@@ -74,25 +70,31 @@ class VismaSignBackend(models.Model):
 
         path = "/api/v1/document/00000000-0000-0000-0000-000000000000"
 
-        binding = self.env["vismasign.binding"].create({
-            "backend_id": self.id,
-            "method": "GET",
-            "endpoint": path,
-        })
+        binding = self.env["vismasign.binding"].create(
+            {
+                "backend_id": self.id,
+                "method": "GET",
+                "endpoint": path,
+            }
+        )
 
         try:
             resp = self._request("GET", path)
             successful = resp.status_code in (200, 404)
-            binding.write({
-                "status_code": resp.status_code,
-                "response": resp.text,
-                "successful": successful,
-            })
+            binding.write(
+                {
+                    "status_code": resp.status_code,
+                    "response": resp.text,
+                    "successful": successful,
+                }
+            )
         except Exception as e:
-            binding.write({
-                "response": str(e),
-                "successful": False,
-            })
+            binding.write(
+                {
+                    "response": str(e),
+                    "successful": False,
+                }
+            )
             raise UserError(_("Connection failed:\n%s") % e)
 
         if successful:
@@ -101,7 +103,9 @@ class VismaSignBackend(models.Model):
                 % resp.status_code
             )
 
-        raise UserError(_("Unexpected status code from Visma Sign: %s") % resp.status_code)
+        raise UserError(
+            _("Unexpected status code from Visma Sign: %s") % resp.status_code
+        )
 
     def create_document(self, payload):
         self.ensure_one()
@@ -117,26 +121,29 @@ class VismaSignBackend(models.Model):
             "body": body.decode("utf-8"),
         }
 
-        binding = self.env["vismasign.binding"].create({
-            "backend_id": self.id,
-            "method": "POST",
-            "endpoint": path,
-            "payload": json.dumps(payload, ensure_ascii=False, indent=2),
-        })
+        binding = self.env["vismasign.binding"].create(
+            {
+                "backend_id": self.id,
+                "method": "POST",
+                "endpoint": path,
+                "payload": json.dumps(payload, ensure_ascii=False, indent=2),
+            }
+        )
 
         response = self._request("POST", path, body, "application/json")
 
         _logger.info("Visma Sign responded with status %s", response.status_code)
-        binding.write({
-            "status_code": response.status_code,
-            "response": response.text,
-            "successful": response.status_code == 201,
-        })
+        binding.write(
+            {
+                "status_code": response.status_code,
+                "response": response.text,
+                "successful": response.status_code == 201,
+            }
+        )
         if response.status_code != 201:
             _logger.error("Visma Sign document request failed: %s", response.text)
             raise UserError(
-                _("Failed to create document in Visma Sign:\n%s")
-                % response.text
+                _("Failed to create document in Visma Sign:\n%s") % response.text
             )
 
         location = response.headers.get("Location")
@@ -154,11 +161,13 @@ class VismaSignBackend(models.Model):
         filename_q = quote(filename, safe="")
         path = f"/api/v1/document/{document_uuid}/files?filename={filename_q}"
 
-        binding = self.env["vismasign.binding"].create({
-            "backend_id": self.id,
-            "method": "POST",
-            "endpoint": path,
-        })
+        binding = self.env["vismasign.binding"].create(
+            {
+                "backend_id": self.id,
+                "method": "POST",
+                "endpoint": path,
+            }
+        )
         response = self._request("POST", path, pdf_data, "application/pdf")
 
         try:
@@ -196,21 +205,18 @@ class VismaSignBackend(models.Model):
         self.ensure_one()
         path = f"/api/v1/document/{document_uuid}/invitations"
 
-        invite = {
-            "email": recipient_email,
-            "messages": {
-                "send_invitation_email": True
-            }
-        }
+        invite = {"email": recipient_email, "messages": {"send_invitation_email": True}}
 
         body = json.dumps([invite]).encode("utf-8")
 
-        binding = self.env["vismasign.binding"].create({
-            "backend_id": self.id,
-            "method": "POST",
-            "endpoint": path,
-            "payload": json.dumps([invite], ensure_ascii=False, indent=2),
-        })
+        binding = self.env["vismasign.binding"].create(
+            {
+                "backend_id": self.id,
+                "method": "POST",
+                "endpoint": path,
+                "payload": json.dumps([invite], ensure_ascii=False, indent=2),
+            }
+        )
 
         response = self._request("POST", path, body, "application/json")
 
@@ -219,11 +225,13 @@ class VismaSignBackend(models.Model):
         except ValueError:
             response_data = {}
 
-        binding.write({
-            "status_code": response.status_code,
-            "response": response.text,
-            "successful": response.status_code == 201,
-        })
+        binding.write(
+            {
+                "status_code": response.status_code,
+                "response": response.text,
+                "successful": response.status_code == 201,
+            }
+        )
 
         if response.status_code != 201:
             raise UserError(
@@ -242,11 +250,13 @@ class VismaSignBackend(models.Model):
         self.ensure_one()
         path = f"/api/v1/invitation/{invitation_uuid}"
 
-        binding = self.env["vismasign.binding"].create({
-            "backend_id": self.id,
-            "method": "GET",
-            "endpoint": path,
-        })
+        binding = self.env["vismasign.binding"].create(
+            {
+                "backend_id": self.id,
+                "method": "GET",
+                "endpoint": path,
+            }
+        )
 
         response = self._request("GET", path)
 
@@ -257,11 +267,13 @@ class VismaSignBackend(models.Model):
             data = {}
             response_text = response.text
 
-        binding.write({
-            "status_code": response.status_code,
-            "response": response_text,
-            "successful": response.status_code == 200,
-        })
+        binding.write(
+            {
+                "status_code": response.status_code,
+                "response": response_text,
+                "successful": response.status_code == 200,
+            }
+        )
 
         if response.status_code != 200:
             raise UserError(
@@ -275,4 +287,3 @@ class VismaSignBackend(models.Model):
             data,
         )
         return data
-
