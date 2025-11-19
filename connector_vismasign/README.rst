@@ -25,6 +25,7 @@ Features
 * PDF file upload
 * Sending signing invitations
 * Fetching invitation status
+* **Downloading signed PDF documents via the API**
 * Request/response logging in ``vismasign.binding`` (for debugging and audit)
 * “Test Connection” tool for validating configuration
 * Designed to be extended by downstream feature modules (e.g. Agreement integration)
@@ -43,6 +44,7 @@ This module:
   - ``add_file(document_uuid, filename, pdf_data)``
   - ``send_invitation(document_uuid, email)``
   - ``get_invitation_status(invitation_uuid)``
+  - ``get_document_file(document_uuid, index=0)``
 
 Other modules:
 --------------
@@ -85,6 +87,10 @@ Other modules can import and use the connector like this:
 * Send an invitation:
 
   ``inv = backend.send_invitation(uuid, email)``
+
+* Download a signed PDF:
+
+  ``pdf_bytes = backend.get_document_file(uuid, index=0)``
 
 Bindings allow you to see all requests and responses in Odoo UI for debugging.
 

@@ -287,3 +287,70 @@ class VismaSignBackend(models.Model):
             data,
         )
         return data
+    
+    def get_document_file(self, document_uuid, index=0):
+        """
+        Download a file of a Visma Sign document.
+
+        Uses:
+            GET /api/v1/document/{document_uuid}/files/{index}
+
+        :param document_uuid: Visma Sign document UUID
+        :param index: File index (default 0)
+        :return: Raw file content as bytes (typically PDF)
+        """
+        self.ensure_one()
+        path = f"/api/v1/document/{document_uuid}/files/{index}"
+
+        # Log the request in binding model
+        binding = self.env["vismasign.binding"].create(
+            {
+                "backend_id": self.id,
+                "method": "GET",
+                "endpoint": path,
+            }
+        )
+
+        response = self._request("GET", path)
+
+        # Error handling
+        if response.status_code != 200:
+            try:
+                response_text = response.text
+            except Exception:
+                response_text = "<binary response>"
+
+            binding.write(
+                {
+                    "status_code": response.status_code,
+                    "response": response_text,
+                    "successful": False,
+                }
+            )
+
+            raise UserError(
+                _("Visma Sign get document file failed: %s\n%s")
+                % (response.status_code, response_text)
+            )
+
+        # Success path – don't store binary in DB, just a short summary
+        content = response.content or b""
+        content_length = len(content)
+
+        binding.write(
+            {
+                "status_code": response.status_code,
+                "response": _("Binary content (%s bytes)") % content_length,
+                "successful": True,
+            }
+        )
+
+        _logger.info(
+            "Downloaded Visma Sign document %s file index %s (%s bytes)",
+            document_uuid,
+            index,
+            content_length,
+        )
+
+        return content
+

@@ -87,6 +87,9 @@ class Agreement(models.Model):
         """
         Päivittää Visma Sign -kutsujen statukset invitation_uuid:n perusteella.
         Ajetaan ir.cronilla.
+
+        Jos status päivittyy Signed-tilaan, haetaan allekirjoitettu
+        dokumentti Visma Signista ja tallennetaan se Agreementin liitteisiin.
         """
         backends = self.env["vismasign.backend"].search([])
         for backend in backends:
@@ -111,6 +114,8 @@ class Agreement(models.Model):
                     continue
 
                 status = data.get("status")
+                prev_status = agreement.vismasign_status
+
                 agreement.write(
                     {
                         "vismasign_status": status,
@@ -123,3 +128,63 @@ class Agreement(models.Model):
                     agreement.id,
                     status,
                 )
+
+                # Jos status on Signed ja meillä on document_uuid,
+                # haetaan allekirjoitettu PDF ja tallennetaan liitteeksi.
+                if (
+                    status == "Signed"
+                    and agreement.vismasign_document_uuid
+                ):
+                    # Tarkistetaan, onko allekirjoitettu liite jo olemassa,
+                    # ettei luoda duplikaatteja jokaisella cron-ajolla.
+                    attachment_name = "Agreement - %s (signed).pdf" % (agreement.name,)
+                    existing_attachment = self.env["ir.attachment"].search(
+                        [
+                            ("res_model", "=", agreement._name),
+                            ("res_id", "=", agreement.id),
+                            ("name", "=", attachment_name),
+                        ],
+                        limit=1,
+                    )
+
+                    if existing_attachment:
+                        _logger.info(
+                            "Signed attachment already exists for agreement %s, skipping download",
+                            agreement.id,
+                        )
+                        continue
+
+                    try:
+                        signed_pdf = backend.get_document_file(
+                            agreement.vismasign_document_uuid, index=0
+                        )
+                    except UserError as e:
+                        _logger.warning(
+                            "Failed to download signed Visma Sign document for agreement %s: %s",
+                            agreement.id,
+                            e,
+                        )
+                        continue
+
+                    if not signed_pdf:
+                        _logger.warning(
+                            "Empty signed document content for agreement %s",
+                            agreement.id,
+                        )
+                        continue
+
+                    self.env["ir.attachment"].create(
+                        {
+                            "name": attachment_name,
+                            "res_model": agreement._name,
+                            "res_id": agreement.id,
+                            "type": "binary",
+                            "datas": base64.b64encode(signed_pdf),
+                            "mimetype": "application/pdf",
+                        }
+                    )
+
+                    _logger.info(
+                        "Created signed PDF attachment for agreement %s",
+                        agreement.id,
+                    )

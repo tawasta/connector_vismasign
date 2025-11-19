@@ -31,7 +31,12 @@ Features
   - ``vismasign_status``
   - ``vismasign_last_check``
 
-* Includes a scheduled cron job that updates the invitation status every 15 minutes
+* Includes a scheduled cron job that:
+  
+  - Updates invitation status every 15 minutes  
+  - **Detects when an agreement is signed**
+  - **Downloads the signed PDF via the connector (`get_document_file`)**
+  - **Automatically stores the signed PDF as an attachment on the Agreement**
 
 
 Configuration
@@ -50,9 +55,9 @@ Usage
   - **Visma Sign Document UUID**
   - **Visma Sign File UUID**
   - **Visma Sign Invitation UUID**
-  - **Visma Sign Status**
+  - **Visma Sign Last Check**
 
-* The cron task keeps the status up to date.
+* The cron task keeps the status up to date and handles the downloading of the signed PDF.
 
 Known issues / Roadmap
 ======================
