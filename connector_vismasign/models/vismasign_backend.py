@@ -15,6 +15,20 @@ _logger = logging.getLogger(__name__)
 
 
 class VismaSignBackend(models.Model):
+    """
+    Backend connector for communicating with the Visma Sign API.
+
+    This class is responsible for:
+    - Building signed HMAC–SHA512 requests
+    - Making authenticated API calls
+    - Uploading PDF files
+    - Creating Visma Sign documents
+    - Sending signing invitations
+    - Fetching invitation and signing statuses
+    - Downloading signed files
+    - Logging all API traffic into vismasign.binding
+    """
+
     _name = "vismasign.backend"
     _description = "Visma Sign Backend"
     _inherit = "connector.backend"
@@ -32,14 +46,44 @@ class VismaSignBackend(models.Model):
 
     @api.constrains("base_url")
     def _check_base_url(self):
+        """
+        Ensure the base URL does not end with a trailing slash.
+
+        Visma Sign rejects URLs that contain a double trailing slash,
+        so this prevents accidental misconfiguration.
+        """
         for rec in self:
             if rec.base_url.endswith("/"):
                 raise ValidationError(_("Base URL must not end with '/'."))
 
     def _get_secret_key(self):
+        """
+        Decode the Base64-encoded secret key.
+
+        :return: Raw bytes of the secret key
+        """
         return base64.b64decode(self.secret_key_b64 or "")
 
     def _build_headers(self, method, path, body, content_type=""):
+        """
+        Build the signed HMAC–SHA512 authorization headers required by Visma Sign.
+
+        Follows Visma Sign authentication format:
+            METHOD
+            Base64(MD5(body))
+            Content-Type
+            Date
+            Request-Path
+
+        The signature is:
+            Base64(HMAC_SHA512(secret_key, above_string))
+
+        :param method: HTTP method (GET/POST)
+        :param path: API endpoint path
+        :param body: Raw request body in bytes
+        :param content_type: MIME type of the request
+        :return: Dictionary of HTTP headers
+        """
         secret_key = self._get_secret_key()
         md5 = base64.b64encode(hashlib.md5(body).digest()).decode()
         date = format_datetime(datetime.now(timezone.utc))
@@ -56,6 +100,18 @@ class VismaSignBackend(models.Model):
         }
 
     def _request(self, method, path, body=b"", content_type=""):
+        """
+        Perform a signed HTTP request to Visma Sign API.
+
+        Automatically signs headers using `_build_headers`.
+
+        :param method: HTTP method
+        :param path: Endpoint path
+        :param body: Request body (bytes)
+        :param content_type: MIME type
+        :return: Response object from `requests`
+        :raises UserError: On network or API errors
+        """
         url = f"{self.base_url}{path}"
         headers = self._build_headers(method, path, body, content_type)
         try:
@@ -65,8 +121,16 @@ class VismaSignBackend(models.Model):
         return resp
 
     def action_test_connection(self):
+        """
+        Test backend connectivity by performing a GET request to a known dummy UUID.
+
+        Any 200 or 404 response is considered valid because:
+        - 200 = existing document (unlikely but valid)
+        - 404 = document not found but authentication OK
+
+        In all cases, the request is logged into vismasign.binding.
+        """
         self.ensure_one()
-        _logger.info("Testing Visma Sign connection with backend %s", self.id)
 
         path = "/api/v1/document/00000000-0000-0000-0000-000000000000"
 
@@ -108,18 +172,19 @@ class VismaSignBackend(models.Model):
         )
 
     def create_document(self, payload):
+        """
+        Create a new empty document container in Visma Sign.
+
+        Endpoint:
+            POST /api/v1/document/
+
+        :param payload: Dict containing document metadata
+        :return: Newly created document UUID
+        :raises UserError: If the API does not return HTTP 201
+        """
         self.ensure_one()
         path = "/api/v1/document/"
-        url = f"{self.base_url}{path}"
         body = json.dumps(payload).encode("utf-8")
-        headers = self._build_headers("POST", path, body, "application/json")
-
-        request_data = {
-            "url": url,
-            "method": "POST",
-            "headers": headers,
-            "body": body.decode("utf-8"),
-        }
 
         binding = self.env["vismasign.binding"].create(
             {
@@ -132,7 +197,6 @@ class VismaSignBackend(models.Model):
 
         response = self._request("POST", path, body, "application/json")
 
-        _logger.info("Visma Sign responded with status %s", response.status_code)
         binding.write(
             {
                 "status_code": response.status_code,
@@ -141,21 +205,28 @@ class VismaSignBackend(models.Model):
             }
         )
         if response.status_code != 201:
-            _logger.error("Visma Sign document request failed: %s", response.text)
             raise UserError(
                 _("Failed to create document in Visma Sign:\n%s") % response.text
             )
 
         location = response.headers.get("Location")
-        _logger.info("Visma Sign Location header: %s", location)
-
-        _logger.info("Visma Sign document request stored in binding %s", binding.id)
 
         document_uuid = location.rstrip("/").split("/")[-1]
-        _logger.info("Visma Sign document created: %s", document_uuid)
         return document_uuid
 
     def add_file(self, document_uuid, filename, pdf_data):
+        """
+        Upload a PDF file to an existing Visma Sign document.
+
+        Endpoint:
+            POST /api/v1/document/{uuid}/files?filename=
+
+        :param document_uuid: Target document UUID
+        :param filename: File name to show in Visma Sign
+        :param pdf_data: Raw PDF bytes
+        :return: File UUID assigned by Visma Sign
+        :raises UserError: If upload fails or no UUID returned
+        """
         self.ensure_one()
 
         filename_q = quote(filename, safe="")
@@ -175,8 +246,6 @@ class VismaSignBackend(models.Model):
         except ValueError:
             response_data = {}
 
-        _logger.info("Visma Sign response_data %s", response_data)
-
         binding_vals = {
             "status_code": response.status_code,
             "response": response.text,
@@ -194,14 +263,22 @@ class VismaSignBackend(models.Model):
         if not file_uuid:
             raise UserError(_("Visma Sign did not return file uuid."))
 
-        _logger.info(
-            "Visma Sign file added to document %s, file uuid %s",
-            document_uuid,
-            file_uuid,
-        )
         return file_uuid
 
     def send_invitation(self, document_uuid, recipient_email):
+        """
+        Send a signing invitation to a user by email.
+
+        Endpoint:
+            POST /api/v1/document/{uuid}/invitations
+
+        The backend sends the email via Visma Sign.
+
+        :param document_uuid: Document UUID
+        :param recipient_email: Email of the signer
+        :return: Parsed JSON response
+        :raises UserError: On API error
+        """
         self.ensure_one()
         path = f"/api/v1/document/{document_uuid}/invitations"
 
@@ -243,9 +320,21 @@ class VismaSignBackend(models.Model):
 
     def get_invitation_status(self, invitation_uuid):
         """
-        GET /api/v1/invitation/{invitation_uuid}
+        Get the status of a signing invitation.
 
-        Palauttaa kutsun (invitation) statuksen ja perusdatan Visma Signista.
+        Endpoint:
+            GET /api/v1/invitation/{uuid}
+
+        Returns status values such as:
+            - pending
+            - opened
+            - signed
+            - expired
+            - rejected
+
+        :param invitation_uuid: Invitation UUID
+        :return: Parsed JSON response
+        :raises UserError: If API does not return 200 OK
         """
         self.ensure_one()
         path = f"/api/v1/invitation/{invitation_uuid}"
@@ -281,28 +370,23 @@ class VismaSignBackend(models.Model):
                 % (response.status_code, response.text)
             )
 
-        _logger.info(
-            "Visma Sign invitation %s status response: %s",
-            invitation_uuid,
-            data,
-        )
         return data
-    
+
     def get_document_file(self, document_uuid, index=0):
         """
-        Download a file of a Visma Sign document.
+        Download a file attached to a Visma Sign document.
 
-        Uses:
-            GET /api/v1/document/{document_uuid}/files/{index}
+        Endpoint:
+            GET /api/v1/document/{uuid}/files/{index}
 
-        :param document_uuid: Visma Sign document UUID
-        :param index: File index (default 0)
-        :return: Raw file content as bytes (typically PDF)
+        :param document_uuid: Document UUID
+        :param index: File index, default is 0
+        :return: Binary file content (PDF)
+        :raises UserError: If download fails
         """
         self.ensure_one()
         path = f"/api/v1/document/{document_uuid}/files/{index}"
 
-        # Log the request in binding model
         binding = self.env["vismasign.binding"].create(
             {
                 "backend_id": self.id,
@@ -313,7 +397,6 @@ class VismaSignBackend(models.Model):
 
         response = self._request("GET", path)
 
-        # Error handling
         if response.status_code != 200:
             try:
                 response_text = response.text
@@ -333,7 +416,6 @@ class VismaSignBackend(models.Model):
                 % (response.status_code, response_text)
             )
 
-        # Success path – don't store binary in DB, just a short summary
         content = response.content or b""
         content_length = len(content)
 
@@ -345,12 +427,4 @@ class VismaSignBackend(models.Model):
             }
         )
 
-        _logger.info(
-            "Downloaded Visma Sign document %s file index %s (%s bytes)",
-            document_uuid,
-            index,
-            content_length,
-        )
-
         return content
-
