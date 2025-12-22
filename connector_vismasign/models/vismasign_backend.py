@@ -294,7 +294,9 @@ class VismaSignBackend(models.Model):
         location = response.headers.get("Location") or ""
         category_uuid = location.rstrip("/").split("/")[-1]
         if not category_uuid:
-            raise UserError(_("Visma Sign did not return category uuid in Location header."))
+            raise UserError(
+                _("Visma Sign did not return category uuid in Location header.")
+            )
 
         return category_uuid
 

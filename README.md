@@ -10,7 +10,6 @@ Available addons
 ----------------
 addon | version | maintainers | summary
 --- | --- | --- | ---
-[agreement_vismasign](agreement_vismasign/) | 17.0.1.0.0 |  | Agreement vismasign
 [connector_vismasign](connector_vismasign/) | 17.0.1.0.0 |  | Visma Sign Connector
 
 [//]: # (end addons)

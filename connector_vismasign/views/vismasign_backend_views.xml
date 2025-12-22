@@ -22,18 +22,12 @@
                     </group>
 
                     <group string="Default document category">
-                        <field
-                            name="category_name"
-                            placeholder="e.g. Agreements"
-                        />
+                        <field name="category_name" placeholder="e.g. Agreements" />
                         <field
                             name="category_description"
                             placeholder="Optional description shown in Visma Sign"
                         />
-                        <field
-                            name="category_uuid"
-                            readonly="1"
-                        />
+                        <field name="category_uuid" readonly="1" />
                     </group>
                 </sheet>
             </form>
