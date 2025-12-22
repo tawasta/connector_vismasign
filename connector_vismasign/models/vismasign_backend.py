@@ -64,6 +64,23 @@ class VismaSignBackend(models.Model):
         ),
     )
 
+    inviter_name = fields.Char(
+        string="Inviter name",
+        help="Optional. If set, sent as inviter.name (5-50 chars) in invitation payload.",
+    )
+    inviter_email = fields.Char(
+        string="Inviter email",
+        help="Optional. If set, sent as inviter.email in invitation payload.",
+    )
+
+    @api.constrains("inviter_name")
+    def _check_inviter_name(self):
+        for rec in self:
+            if rec.inviter_name:
+                name = rec.inviter_name.strip()
+                if len(name) < 5 or len(name) > 50:
+                    raise ValidationError(_("Inviter name must be 5-50 characters."))
+
     @api.onchange("category_name", "category_description")
     def _onchange_category_fields(self):
         for rec in self:
@@ -195,6 +212,25 @@ class VismaSignBackend(models.Model):
         raise UserError(
             _("Unexpected status code from Visma Sign: %s") % resp.status_code
         )
+
+    def _build_inviter_payload(self):
+        """
+        Build inviter payload according to Visma Sign API.
+        If no inviter fields are configured, return False so caller omits inviter completely.
+
+        inviter: {
+            name, email
+        }
+        """
+        self.ensure_one()
+
+        inviter = {}
+        if self.inviter_name:
+            inviter["name"] = self.inviter_name.strip()
+        if self.inviter_email:
+            inviter["email"] = self.inviter_email.strip()
+
+        return inviter or False
 
     def get_categories(self):
         """
@@ -458,6 +494,10 @@ class VismaSignBackend(models.Model):
         path = f"/api/v1/document/{document_uuid}/invitations"
 
         invite = {"email": recipient_email, "messages": {"send_invitation_email": True}}
+
+        inviter_payload = self._build_inviter_payload()
+        if inviter_payload:
+            invite["inviter"] = inviter_payload
 
         body = json.dumps([invite]).encode("utf-8")
 
