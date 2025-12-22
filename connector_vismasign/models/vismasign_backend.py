@@ -44,6 +44,31 @@ class VismaSignBackend(models.Model):
     )
     binding_ids = fields.One2many("vismasign.binding", "backend_id", readonly=True)
 
+    category_name = fields.Char(
+        string="Default category (name)",
+        help=(
+            "Visma Sign category name to use for created documents. "
+            "If set, the backend will resolve/create the category and attach it to documents."
+        ),
+    )
+    category_description = fields.Text(
+        string="Category description",
+        help="Optional description used only when creating the category in Visma Sign.",
+    )
+    category_uuid = fields.Char(
+        string="Default category UUID",
+        readonly=True,
+        help=(
+            "Resolved/created Visma Sign category UUID (cached). "
+            "Cleared automatically if name/description changes."
+        ),
+    )
+
+    @api.onchange("category_name", "category_description")
+    def _onchange_category_fields(self):
+        for rec in self:
+            rec.category_uuid = False
+
     @api.constrains("base_url")
     def _check_base_url(self):
         """
@@ -171,6 +196,145 @@ class VismaSignBackend(models.Model):
             _("Unexpected status code from Visma Sign: %s") % resp.status_code
         )
 
+    def get_categories(self):
+        """
+        Get all categories.
+
+        Endpoint:
+            GET /api/v1/category/
+
+        Expected response is typically:
+            {"categories": [{"uuid": "...", "name": "...", "description": "..."}, ...]}
+
+        :return: Parsed JSON dict
+        :raises UserError: If API does not return 200 OK
+        """
+        self.ensure_one()
+        path = "/api/v1/category/"
+
+        binding = self.env["vismasign.binding"].create(
+            {
+                "backend_id": self.id,
+                "method": "GET",
+                "endpoint": path,
+            }
+        )
+
+        response = self._request("GET", path)
+
+        try:
+            data = response.json()
+            response_text = json.dumps(data, ensure_ascii=False, indent=2)
+        except ValueError:
+            data = {}
+            response_text = response.text
+
+        binding.write(
+            {
+                "status_code": response.status_code,
+                "response": response_text,
+                "successful": response.status_code == 200,
+            }
+        )
+
+        if response.status_code != 200:
+            raise UserError(
+                _("Visma Sign get categories failed: %s\n%s")
+                % (response.status_code, response.text)
+            )
+
+        return data
+
+    def create_category(self, name, description=""):
+        """
+        Create a category.
+
+        Endpoint:
+            POST /api/v1/category/
+
+        Body:
+            {"name": "...", "description": "..."}
+
+        UUID is returned in Location header.
+
+        :return: category UUID (str)
+        """
+        self.ensure_one()
+        path = "/api/v1/category/"
+        payload = {
+            "name": name,
+            "description": description or "",
+        }
+        body = json.dumps(payload).encode("utf-8")
+
+        binding = self.env["vismasign.binding"].create(
+            {
+                "backend_id": self.id,
+                "method": "POST",
+                "endpoint": path,
+                "payload": json.dumps(payload, ensure_ascii=False, indent=2),
+            }
+        )
+
+        response = self._request("POST", path, body, "application/json")
+
+        binding.write(
+            {
+                "status_code": response.status_code,
+                "response": response.text,
+                "successful": response.status_code == 201,
+            }
+        )
+
+        if response.status_code != 201:
+            raise UserError(
+                _("Failed to create category in Visma Sign:\n%s") % response.text
+            )
+
+        location = response.headers.get("Location") or ""
+        category_uuid = location.rstrip("/").split("/")[-1]
+        if not category_uuid:
+            raise UserError(
+                _("Visma Sign did not return category uuid in Location header.")
+            )
+
+        return category_uuid
+
+    def ensure_default_category_uuid(self):
+        """
+        Resolve backend.category_name -> category UUID.
+        - If category_name not set: returns False
+        - If category_uuid cached: returns it
+        - Else: GET categories, find matching by name
+          - if found: cache uuid and return
+          - else: create category, cache uuid and return
+        """
+        self.ensure_one()
+
+        if not self.category_name:
+            return False
+
+        if self.category_uuid:
+            return self.category_uuid
+
+        wanted = (self.category_name or "").strip()
+        if not wanted:
+            return False
+
+        data = self.get_categories()
+        categories = data.get("categories") or []
+        for cat in categories:
+            if (cat.get("name") or "").strip() == wanted:
+                uuid = cat.get("uuid")
+                if uuid:
+                    self.write({"category_uuid": uuid})
+                    return uuid
+
+        # Not found -> create new
+        new_uuid = self.create_category(wanted, self.category_description or "")
+        self.write({"category_uuid": new_uuid})
+        return new_uuid
+
     def create_document(self, payload):
         """
         Create a new empty document container in Visma Sign.
@@ -183,6 +347,18 @@ class VismaSignBackend(models.Model):
         :raises UserError: If the API does not return HTTP 201
         """
         self.ensure_one()
+
+        payload = payload or {}
+        doc = payload.get("document") or {}
+        if "category_uuid" not in doc and "category" not in doc:
+            cat_uuid = self.ensure_default_category_uuid()
+            if cat_uuid:
+                # make sure we don't mutate caller dict unexpectedly
+                payload = dict(payload)
+                doc = dict(doc)
+                doc["category_uuid"] = cat_uuid
+                payload["document"] = doc
+
         path = "/api/v1/document/"
         body = json.dumps(payload).encode("utf-8")
 
@@ -210,7 +386,6 @@ class VismaSignBackend(models.Model):
             )
 
         location = response.headers.get("Location")
-
         document_uuid = location.rstrip("/").split("/")[-1]
         return document_uuid
 
@@ -324,17 +499,6 @@ class VismaSignBackend(models.Model):
 
         Endpoint:
             GET /api/v1/invitation/{uuid}
-
-        Returns status values such as:
-            - pending
-            - opened
-            - signed
-            - expired
-            - rejected
-
-        :param invitation_uuid: Invitation UUID
-        :return: Parsed JSON response
-        :raises UserError: If API does not return 200 OK
         """
         self.ensure_one()
         path = f"/api/v1/invitation/{invitation_uuid}"
@@ -378,11 +542,6 @@ class VismaSignBackend(models.Model):
 
         Endpoint:
             GET /api/v1/document/{uuid}/files/{index}
-
-        :param document_uuid: Document UUID
-        :param index: File index, default is 0
-        :return: Binary file content (PDF)
-        :raises UserError: If download fails
         """
         self.ensure_one()
         path = f"/api/v1/document/{document_uuid}/files/{index}"
