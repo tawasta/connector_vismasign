@@ -348,7 +348,6 @@ class VismaSignBackend(models.Model):
         """
         self.ensure_one()
 
-        # >>> CHANGED: Inject default category_uuid if configured and not already provided
         payload = payload or {}
         doc = payload.get("document") or {}
         if "category_uuid" not in doc and "category" not in doc:
