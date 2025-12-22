@@ -29,6 +29,10 @@
                         />
                         <field name="category_uuid" readonly="1" />
                     </group>
+                    <group string="Inviter (optional)">
+                        <field name="inviter_name"/>
+                        <field name="inviter_email"/>
+                    </group>
                 </sheet>
             </form>
         </field>
