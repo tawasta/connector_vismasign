@@ -82,15 +82,22 @@ class VismaSignBackend(models.Model):
         string="Default: sign as inviter's organization",
         default=False,
         help="Only used if sign_as_organization is true. If enabled, invitations will default to "
-            "sign_as_inviter_organization=true unless overridden.",
+        "sign_as_inviter_organization=true unless overridden.",
     )
 
-    @api.constrains("default_sign_as_organization", "default_sign_as_inviter_organization")
+    @api.constrains(
+        "default_sign_as_organization", "default_sign_as_inviter_organization"
+    )
     def _check_default_signing_flags(self):
         for rec in self:
-            if rec.default_sign_as_inviter_organization and not rec.default_sign_as_organization:
+            if (
+                rec.default_sign_as_inviter_organization
+                and not rec.default_sign_as_organization
+            ):
                 raise ValidationError(
-                    _("Default: sign as inviter's organization requires 'sign as organization' to be enabled.")
+                    _(
+                        "Default: sign as inviter's organization requires 'sign as organization' to be enabled."
+                    )
                 )
 
     @api.constrains("inviter_name")
@@ -518,7 +525,9 @@ class VismaSignBackend(models.Model):
             and not self.default_sign_as_organization
         ):
             raise UserError(
-                _("Default 'sign as inviter's organization' requires 'sign as organization' to be enabled.")
+                _(
+                    "Default 'sign as inviter's organization' requires 'sign as organization' to be enabled."
+                )
             )
 
         invite = {"email": recipient_email, "messages": {"send_invitation_email": True}}

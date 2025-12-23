@@ -30,12 +30,12 @@
                         <field name="category_uuid" readonly="1" />
                     </group>
                     <group string="Inviter (optional)">
-                        <field name="inviter_name"/>
-                        <field name="inviter_email"/>
+                        <field name="inviter_name" />
+                        <field name="inviter_email" />
                     </group>
                     <group string="Signing behavior (optional)">
-                        <field name="default_sign_as_organization"/>
-                        <field name="default_sign_as_inviter_organization"/>
+                        <field name="default_sign_as_organization" />
+                        <field name="default_sign_as_inviter_organization" />
                     </group>
                 </sheet>
             </form>
