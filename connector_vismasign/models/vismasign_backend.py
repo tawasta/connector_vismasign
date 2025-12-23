@@ -73,6 +73,26 @@ class VismaSignBackend(models.Model):
         help="Optional. If set, sent as inviter.email in invitation payload.",
     )
 
+    default_sign_as_organization = fields.Boolean(
+        string="Default: sign as organization",
+        default=False,
+        help="If enabled, invitations will default to sign_as_organization=true unless overridden.",
+    )
+    default_sign_as_inviter_organization = fields.Boolean(
+        string="Default: sign as inviter's organization",
+        default=False,
+        help="Only used if sign_as_organization is true. If enabled, invitations will default to "
+            "sign_as_inviter_organization=true unless overridden.",
+    )
+
+    @api.constrains("default_sign_as_organization", "default_sign_as_inviter_organization")
+    def _check_default_signing_flags(self):
+        for rec in self:
+            if rec.default_sign_as_inviter_organization and not rec.default_sign_as_organization:
+                raise ValidationError(
+                    _("Default: sign as inviter's organization requires 'sign as organization' to be enabled.")
+                )
+
     @api.constrains("inviter_name")
     def _check_inviter_name(self):
         for rec in self:
@@ -493,7 +513,21 @@ class VismaSignBackend(models.Model):
         self.ensure_one()
         path = f"/api/v1/document/{document_uuid}/invitations"
 
+        if (
+            self.default_sign_as_inviter_organization
+            and not self.default_sign_as_organization
+        ):
+            raise UserError(
+                _("Default 'sign as inviter's organization' requires 'sign as organization' to be enabled.")
+            )
+
         invite = {"email": recipient_email, "messages": {"send_invitation_email": True}}
+
+        # Apply backend defaults only when enabled
+        if self.default_sign_as_organization:
+            invite["sign_as_organization"] = True
+            if self.default_sign_as_inviter_organization:
+                invite["sign_as_inviter_organization"] = True
 
         inviter_payload = self._build_inviter_payload()
         if inviter_payload:
