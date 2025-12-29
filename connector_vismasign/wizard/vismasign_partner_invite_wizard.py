@@ -73,7 +73,12 @@ class VismaSignPartnerInviteWizard(models.TransientModel):
             msg = _("Already authorized. Set as_organization_uuid to %s.") % org_uuid
             title = _("Already authorized")
         elif action == "created":
-            msg = _("Organization created in Visma Sign (%s). Set as_organization_uuid automatically.") % org_uuid
+            msg = (
+                _(
+                    "Organization created in Visma Sign (%s). Set as_organization_uuid automatically."
+                )
+                % org_uuid
+            )
             title = _("Organization created")
         else:
             msg = _("Done.")

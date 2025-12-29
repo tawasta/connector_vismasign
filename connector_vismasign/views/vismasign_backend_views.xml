@@ -35,26 +35,58 @@
                         <field name="auth_mode" />
                     </group>
 
-                    <group string="Customer credentials (HMAC)" invisible="auth_mode != 'hmac'">
-                        <field name="client_identifier" required="auth_mode == 'hmac'"/>
-                        <field name="secret_key_b64" password="True" required="auth_mode == 'hmac'"/>
+                    <group
+                        string="Customer credentials (HMAC)"
+                        invisible="auth_mode != 'hmac'"
+                    >
+                        <field
+                            name="client_identifier"
+                            required="auth_mode == 'hmac'"
+                        />
+                        <field
+                            name="secret_key_b64"
+                            password="True"
+                            required="auth_mode == 'hmac'"
+                        />
                     </group>
 
-                    <group string="Partner authentication (OAuth2)" invisible="auth_mode != 'partner'">
-                        <field name="partner_client_id" required="auth_mode == 'partner'"/>
-                        <field name="partner_client_secret" password="True" required="auth_mode == 'partner'"/>
-                        <field name="partner_scope" placeholder="organization_search organization_create organization_access document_create ..." />
-                        <field name="as_organization_uuid" placeholder="Target Visma Sign organization UUID"/>
+                    <group
+                        string="Partner authentication (OAuth2)"
+                        invisible="auth_mode != 'partner'"
+                    >
+                        <field
+                            name="partner_client_id"
+                            required="auth_mode == 'partner'"
+                        />
+                        <field
+                            name="partner_client_secret"
+                            password="True"
+                            required="auth_mode == 'partner'"
+                        />
+                        <field
+                            name="partner_scope"
+                            placeholder="organization_search organization_create organization_access document_create ..."
+                        />
+                        <field
+                            name="as_organization_uuid"
+                            placeholder="Target Visma Sign organization UUID"
+                        />
                     </group>
 
-                    <group string="Partner token status" invisible="auth_mode != 'partner'">
+                    <group
+                        string="Partner token status"
+                        invisible="auth_mode != 'partner'"
+                    >
                         <field name="partner_access_token" readonly="1" />
                         <field name="partner_token_expires_at" readonly="1" />
                     </group>
 
                     <group string="Default document category">
                         <field name="category_name" placeholder="e.g. Agreements" />
-                        <field name="category_description" placeholder="Optional description shown in Visma Sign" />
+                        <field
+                            name="category_description"
+                            placeholder="Optional description shown in Visma Sign"
+                        />
                         <field name="category_uuid" readonly="0" />
                     </group>
 
@@ -80,7 +112,7 @@
                 <field name="company_id" />
                 <field name="base_url" />
                 <field name="auth_mode" />
-                <field name="as_organization_uuid" invisible="auth_mode != 'partner'"/>
+                <field name="as_organization_uuid" invisible="auth_mode != 'partner'" />
             </tree>
         </field>
     </record>

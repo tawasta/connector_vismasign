@@ -4,4 +4,3 @@ access_vismasign_binding,vismasign.binding,model_vismasign_binding,,1,1,1,1
 access_vismasign_partner_onboard_wizard,vismasign.partner.onboard.wizard,model_vismasign_partner_onboard_wizard,,1,1,1,1
 access_vismasign_partner_onboard_wizard_line,vismasign.partner.onboard.wizard.line,model_vismasign_partner_onboard_wizard_line,,1,1,1,1
 access_vismasign_partner_invite_wizard,vismasign.partner.invite.wizard,model_vismasign_partner_invite_wizard,,1,1,1,1
-

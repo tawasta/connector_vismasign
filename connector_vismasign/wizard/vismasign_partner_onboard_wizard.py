@@ -51,17 +51,25 @@ class VismaSignPartnerOnboardWizard(models.TransientModel):
         for org in organizations:
             uuid = org.get("uuid")
             auth = org.get("authorization") or {}
-            authorized = bool(auth.get("authorized")) if isinstance(auth, dict) else False
+            authorized = (
+                bool(auth.get("authorized")) if isinstance(auth, dict) else False
+            )
 
             if not uuid:
                 continue
 
-            lines.append((0, 0, {
-                "organization_uuid": uuid,
-                "name": org.get("name") or "",
-                "business_id": org.get("business_id") or bid,
-                "authorized": authorized,
-            }))
+            lines.append(
+                (
+                    0,
+                    0,
+                    {
+                        "organization_uuid": uuid,
+                        "name": org.get("name") or "",
+                        "business_id": org.get("business_id") or bid,
+                        "authorized": authorized,
+                    },
+                )
+            )
 
         if lines:
             self.write({"line_ids": lines})

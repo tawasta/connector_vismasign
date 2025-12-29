@@ -31,7 +31,10 @@ class VismaSignBackend(models.Model):
     base_url = fields.Char(required=True)
 
     auth_mode = fields.Selection(
-        selection=[("hmac", "Customer credentials (HMAC)"), ("partner", "Partner OAuth2")],
+        selection=[
+            ("hmac", "Customer credentials (HMAC)"),
+            ("partner", "Partner OAuth2"),
+        ],
         string="Authentication mode",
         required=True,
         default="hmac",
@@ -111,12 +114,19 @@ class VismaSignBackend(models.Model):
         "sign_as_inviter_organization=true unless overridden.",
     )
 
-    @api.constrains("default_sign_as_organization", "default_sign_as_inviter_organization")
+    @api.constrains(
+        "default_sign_as_organization", "default_sign_as_inviter_organization"
+    )
     def _check_default_signing_flags(self):
         for rec in self:
-            if rec.default_sign_as_inviter_organization and not rec.default_sign_as_organization:
+            if (
+                rec.default_sign_as_inviter_organization
+                and not rec.default_sign_as_organization
+            ):
                 raise ValidationError(
-                    _("Default: sign as inviter's organization requires 'sign as organization' to be enabled.")
+                    _(
+                        "Default: sign as inviter's organization requires 'sign as organization' to be enabled."
+                    )
                 )
 
     @api.constrains("inviter_name")
@@ -146,12 +156,16 @@ class VismaSignBackend(models.Model):
             if rec.auth_mode == "hmac":
                 if not rec.client_identifier or not rec.secret_key_b64:
                     raise ValidationError(
-                        _("HMAC mode requires 'client_identifier' and 'secret_key_b64' to be set.")
+                        _(
+                            "HMAC mode requires 'client_identifier' and 'secret_key_b64' to be set."
+                        )
                     )
             elif rec.auth_mode == "partner":
                 if not rec.partner_client_id or not rec.partner_client_secret:
                     raise ValidationError(
-                        _("Partner mode requires 'partner_client_id' and 'partner_client_secret' to be set.")
+                        _(
+                            "Partner mode requires 'partner_client_id' and 'partner_client_secret' to be set."
+                        )
                     )
 
     @api.onchange("category_name", "category_description", "as_organization_uuid")
@@ -202,7 +216,9 @@ class VismaSignBackend(models.Model):
             return self.partner_access_token
 
         if not self.partner_client_id or not self.partner_client_secret:
-            raise UserError(_("Partner mode selected but partner credentials are missing."))
+            raise UserError(
+                _("Partner mode selected but partner credentials are missing.")
+            )
 
         token_path = "/api/v1/auth/token"
         url = f"{self.base_url}{token_path}"
@@ -226,7 +242,10 @@ class VismaSignBackend(models.Model):
             raise UserError(str(e))
 
         if resp.status_code != 200:
-            raise UserError(_("Failed to get partner access token: %s\n%s") % (resp.status_code, resp.text))
+            raise UserError(
+                _("Failed to get partner access token: %s\n%s")
+                % (resp.status_code, resp.text)
+            )
 
         try:
             data = resp.json()
@@ -238,7 +257,10 @@ class VismaSignBackend(models.Model):
         expires_in = data.get("expires_in")
 
         if not token or token_type != "bearer":
-            raise UserError(_("Unexpected token response:\n%s") % json.dumps(data, ensure_ascii=False, indent=2))
+            raise UserError(
+                _("Unexpected token response:\n%s")
+                % json.dumps(data, ensure_ascii=False, indent=2)
+            )
 
         try:
             expires_in = int(expires_in)
@@ -260,13 +282,19 @@ class VismaSignBackend(models.Model):
         query = dict(parse_qsl(parts.query, keep_blank_values=True))
         query[key] = value
         new_query = urlencode(query, doseq=True)
-        return urlunsplit((parts.scheme, parts.netloc, parts.path, new_query, parts.fragment))
+        return urlunsplit(
+            (parts.scheme, parts.netloc, parts.path, new_query, parts.fragment)
+        )
 
     def _is_partner_management_endpoint(self, path):
         """
         Endpoints that must NOT get as_organization automatically.
         """
-        return path.startswith("/api/v1/auth/") or path.startswith("/api/v1/organization/") or path.startswith("/api/v1/partner/")
+        return (
+            path.startswith("/api/v1/auth/")
+            or path.startswith("/api/v1/organization/")
+            or path.startswith("/api/v1/partner/")
+        )
 
     def _should_add_as_organization(self, path):
         if not path.startswith("/api/v1/"):
@@ -296,10 +324,14 @@ class VismaSignBackend(models.Model):
             if self._should_add_as_organization(final_path):
                 if not self.as_organization_uuid:
                     raise UserError(
-                        _("Partner mode requires 'as_organization_uuid' for org API calls (document/category/invitation).")
+                        _(
+                            "Partner mode requires 'as_organization_uuid' for org API calls (document/category/invitation)."
+                        )
                     )
                 final_path = self._append_query_param(
-                    final_path, "as_organization", (self.as_organization_uuid or "").strip()
+                    final_path,
+                    "as_organization",
+                    (self.as_organization_uuid or "").strip(),
                 )
 
         else:
@@ -348,9 +380,15 @@ class VismaSignBackend(models.Model):
             raise UserError(_("Connection failed:\n%s") % e)
 
         if successful:
-            raise UserError(_("Connection successful. Visma Sign responded with status %s.") % resp.status_code)
+            raise UserError(
+                _("Connection successful. Visma Sign responded with status %s.")
+                % resp.status_code
+            )
 
-        raise UserError(_("Unexpected status code from Visma Sign: %s\n%s") % (resp.status_code, resp.text))
+        raise UserError(
+            _("Unexpected status code from Visma Sign: %s\n%s")
+            % (resp.status_code, resp.text)
+        )
 
     # -------------------------
     # Partner onboarding helpers
@@ -363,11 +401,15 @@ class VismaSignBackend(models.Model):
         if self.auth_mode != "partner":
             raise UserError(_("This action requires Partner mode."))
 
-        path = self._append_query_param("/api/v1/organization/", "business_id", (business_id or "").strip())
+        path = self._append_query_param(
+            "/api/v1/organization/", "business_id", (business_id or "").strip()
+        )
         resp = self._request("GET", path)
 
         if resp.status_code != 200:
-            raise UserError(_("Organization search failed: %s\n%s") % (resp.status_code, resp.text))
+            raise UserError(
+                _("Organization search failed: %s\n%s") % (resp.status_code, resp.text)
+            )
         return resp.json()
 
     def partner_create_organization(
@@ -411,7 +453,13 @@ class VismaSignBackend(models.Model):
         }
 
         # minimal validation (client side)
-        for k in ("name", "business_id", "postal_address", "postal_code", "municipality"):
+        for k in (
+            "name",
+            "business_id",
+            "postal_address",
+            "postal_code",
+            "municipality",
+        ):
             if not payload[k]:
                 raise UserError(_("Missing required organization field: %s") % k)
         admin = payload["admins"][0]
@@ -442,7 +490,9 @@ class VismaSignBackend(models.Model):
         )
 
         if resp.status_code != 201:
-            raise UserError(_("Organization create failed: %s\n%s") % (resp.status_code, resp.text))
+            raise UserError(
+                _("Organization create failed: %s\n%s") % (resp.status_code, resp.text)
+            )
 
         # UUID from Location header
         location = resp.headers.get("Location") or ""
@@ -503,7 +553,10 @@ class VismaSignBackend(models.Model):
         )
 
         if resp.status_code != 201:
-            raise UserError(_("Organization access request failed: %s\n%s") % (resp.status_code, resp.text))
+            raise UserError(
+                _("Organization access request failed: %s\n%s")
+                % (resp.status_code, resp.text)
+            )
 
         return True
 
@@ -550,7 +603,9 @@ class VismaSignBackend(models.Model):
             org = orgs[0]
             org_uuid = (org.get("uuid") or "").strip()
             auth = org.get("authorization") or {}
-            authorized = bool(auth.get("authorized")) if isinstance(auth, dict) else False
+            authorized = (
+                bool(auth.get("authorized")) if isinstance(auth, dict) else False
+            )
 
             if not org_uuid:
                 raise UserError(_("Visma Sign returned an organization without UUID."))
@@ -616,7 +671,10 @@ class VismaSignBackend(models.Model):
         )
 
         if response.status_code != 200:
-            raise UserError(_("Visma Sign get categories failed: %s\n%s") % (response.status_code, response.text))
+            raise UserError(
+                _("Visma Sign get categories failed: %s\n%s")
+                % (response.status_code, response.text)
+            )
 
         return data
 
@@ -646,12 +704,16 @@ class VismaSignBackend(models.Model):
         )
 
         if response.status_code != 201:
-            raise UserError(_("Failed to create category in Visma Sign:\n%s") % response.text)
+            raise UserError(
+                _("Failed to create category in Visma Sign:\n%s") % response.text
+            )
 
         location = response.headers.get("Location") or ""
         category_uuid = location.rstrip("/").split("/")[-1]
         if not category_uuid:
-            raise UserError(_("Visma Sign did not return category uuid in Location header."))
+            raise UserError(
+                _("Visma Sign did not return category uuid in Location header.")
+            )
         return category_uuid
 
     def ensure_default_category_uuid(self):
@@ -714,7 +776,9 @@ class VismaSignBackend(models.Model):
             }
         )
         if response.status_code != 201:
-            raise UserError(_("Failed to create document in Visma Sign:\n%s") % response.text)
+            raise UserError(
+                _("Failed to create document in Visma Sign:\n%s") % response.text
+            )
 
         location = response.headers.get("Location") or ""
         document_uuid = location.rstrip("/").split("/")[-1]
@@ -746,7 +810,10 @@ class VismaSignBackend(models.Model):
         )
 
         if response.status_code != 201:
-            raise UserError(_("Visma Sign add file failed: %s\n%s") % (response.status_code, response.text))
+            raise UserError(
+                _("Visma Sign add file failed: %s\n%s")
+                % (response.status_code, response.text)
+            )
 
         file_uuid = response_data.get("uuid")
         if not file_uuid:
@@ -758,9 +825,14 @@ class VismaSignBackend(models.Model):
         self.ensure_one()
         path = f"/api/v1/document/{document_uuid}/invitations"
 
-        if self.default_sign_as_inviter_organization and not self.default_sign_as_organization:
+        if (
+            self.default_sign_as_inviter_organization
+            and not self.default_sign_as_organization
+        ):
             raise UserError(
-                _("Default 'sign as inviter's organization' requires 'sign as organization' to be enabled.")
+                _(
+                    "Default 'sign as inviter's organization' requires 'sign as organization' to be enabled."
+                )
             )
 
         invite = {"email": recipient_email, "messages": {"send_invitation_email": True}}
@@ -801,7 +873,10 @@ class VismaSignBackend(models.Model):
         )
 
         if response.status_code != 201:
-            raise UserError(_("Visma Sign send invitation failed: %s\n%s") % (response.status_code, response.text))
+            raise UserError(
+                _("Visma Sign send invitation failed: %s\n%s")
+                % (response.status_code, response.text)
+            )
 
         return response_data
 
@@ -831,7 +906,10 @@ class VismaSignBackend(models.Model):
         )
 
         if response.status_code != 200:
-            raise UserError(_("Visma Sign get invitation status failed: %s\n%s") % (response.status_code, response.text))
+            raise UserError(
+                _("Visma Sign get invitation status failed: %s\n%s")
+                % (response.status_code, response.text)
+            )
 
         return data
 
@@ -858,7 +936,10 @@ class VismaSignBackend(models.Model):
                     "successful": False,
                 }
             )
-            raise UserError(_("Visma Sign get document file failed: %s\n%s") % (response.status_code, response_text))
+            raise UserError(
+                _("Visma Sign get document file failed: %s\n%s")
+                % (response.status_code, response_text)
+            )
 
         content = response.content or b""
         binding.write(
