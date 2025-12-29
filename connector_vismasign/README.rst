@@ -9,7 +9,7 @@ Visma Sign Connector
 This module provides a **generic, standalone Visma Sign connector** that integrates
 Odoo with the Visma Sign electronic signature service.
 
-It is intentionally designed as a **reusable, model-agnostic backend**.  
+It is intentionally designed as a **reusable, model-agnostic backend**.
 You can use it as a base when implementing signature flows for any Odoo model
 (e.g. agreements, sales orders, HR documents, custom models, etc.).
 
@@ -20,15 +20,34 @@ Features
 ========
 
 * Generic Visma Sign backend with full Connector integration
-* HMAC–SHA512 request signing and authentication headers
-* Document creation
-* PDF file upload
+* Supports **two authentication modes**:
+
+  * **Customer credentials (HMAC)**: requests are signed with HMAC–SHA512 and authenticated with ``Authorization: Onnistuu ...``
+  * **Partner OAuth2**: OAuth2 ``client_credentials`` token (``Authorization: Bearer <token>``) and acting on behalf of a customer with ``as_organization=<uuid>``
+
+* Document creation (``/api/v1/document/``)
+* PDF file upload to a document
 * Sending signing invitations
 * Fetching invitation status
-* **Downloading signed PDF documents via the API**
+* Downloading document files via the API (e.g. signed PDF)
 * Request/response logging in ``vismasign.binding`` (for debugging and audit)
-* “Test Connection” tool for validating configuration
-* Designed to be extended by downstream feature modules (e.g. Agreement integration)
+* “Test Connection” tool for validating configuration (logs the test call into bindings)
+* Optional **default document category** support:
+
+  * Resolves/creates category by name and caches the category UUID on the backend
+  * Automatically attaches the category UUID to created documents (if set)
+
+* Optional **inviter** support (name/email) in invitation payload
+* Optional invitation signing behavior defaults:
+
+  * ``sign_as_organization``
+  * ``sign_as_inviter_organization`` (requires ``sign_as_organization``)
+
+* Partner onboarding helpers (UI wizards):
+
+  * Search organization by business id (Y-tunnus)
+  * “One button” flow to invite/request access or create organization, and store ``as_organization_uuid``
+
 
 Architecture
 ============
@@ -38,11 +57,12 @@ This module:
 
 * Implements a reusable Connector backend (``vismasign.backend``)
 * Stores all API traffic in ``vismasign.binding`` for traceability
+* Provides a unified request layer that selects auth mode automatically
 * Exposes Python helper methods you can call from any model:
-  
+
   - ``create_document(payload)``
   - ``add_file(document_uuid, filename, pdf_data)``
-  - ``send_invitation(document_uuid, email)``
+  - ``send_invitation(document_uuid, recipient_email)``
   - ``get_invitation_status(invitation_uuid)``
   - ``get_document_file(document_uuid, index=0)``
 
@@ -61,12 +81,36 @@ Configuration
 1. Navigate to **Visma Sign → Backends**.
 2. Create a backend and fill:
 
-   * **Base URL** (no trailing slash)
-   * **Client Identifier**
-   * **Secret Key (Base64)**
    * **Company**
+   * **Base URL** (no trailing slash)
+   * **Authentication mode**
 
-3. Click **Test Connection**.
+3. If using **Customer credentials (HMAC)**:
+
+   * **HMAC client identifier**
+   * **HMAC secret key (Base64)**
+
+4. If using **Partner OAuth2**:
+
+   * **Partner OAuth client_id**
+   * **Partner OAuth client_secret**
+   * **Partner OAuth scopes** (space-separated, according to what you need)
+   * **Target organization UUID** (``as_organization_uuid``)
+
+     * Required for organization-level API calls (documents, categories, invitations) in Partner mode
+
+   In Partner mode you can also use the provided wizards from the backend form:
+
+   * **Partner onboarding** (search organizations)
+   * **Send partner invite** (invite/request access or create organization based on Business ID)
+
+5. Optional configuration:
+
+   * **Default document category (name/description)**: the module will resolve/create the category and cache its UUID
+   * **Inviter (name/email)**: sent in invitation payload when set
+   * **Signing behavior defaults**: defaults applied when sending invitations
+
+6. Click **Test Connection**.
 
 Usage
 =====
@@ -80,6 +124,11 @@ Other modules can import and use the connector like this:
 
   ``uuid = backend.create_document(payload)``
 
+  If **Default category** is configured on the backend, the connector will:
+
+  * resolve/create the category in Visma Sign
+  * set ``category_uuid`` on the outgoing document payload automatically (unless your payload already sets it)
+
 * Add a PDF:
 
   ``file_uuid = backend.add_file(uuid, filename, pdf_bytes)``
@@ -88,11 +137,21 @@ Other modules can import and use the connector like this:
 
   ``inv = backend.send_invitation(uuid, email)``
 
-* Download a signed PDF:
+  The connector can optionally include:
+
+  * ``inviter`` block (name/email) if configured
+  * default signing flags (``sign_as_organization`` / ``sign_as_inviter_organization``) if enabled on the backend
+
+* Check invitation status:
+
+  ``status = backend.get_invitation_status(invitation_uuid)``
+
+* Download a document file (e.g. signed PDF):
 
   ``pdf_bytes = backend.get_document_file(uuid, index=0)``
 
-Bindings allow you to see all requests and responses in Odoo UI for debugging.
+Bindings allow you to see all requests and responses in Odoo UI for debugging:
+**Visma Sign → Bindings**.
 
 Known issues / Roadmap
 ======================

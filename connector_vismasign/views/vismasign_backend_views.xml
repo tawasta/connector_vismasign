@@ -87,7 +87,7 @@
                             name="category_description"
                             placeholder="Optional description shown in Visma Sign"
                         />
-                        <field name="category_uuid" readonly="0" />
+                        <field name="category_uuid" readonly="1" />
                     </group>
 
                     <group string="Inviter (optional)">
