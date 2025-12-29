@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
-    <!-- Tree view -->
     <record id="view_vismasign_binding_tree" model="ir.ui.view">
         <field name="name">vismasign.binding.tree</field>
         <field name="model">vismasign.binding</field>
@@ -17,7 +16,6 @@
         </field>
     </record>
 
-    <!-- Form view -->
     <record id="view_vismasign_binding_form" model="ir.ui.view">
         <field name="name">vismasign.binding.form</field>
         <field name="model">vismasign.binding</field>
@@ -48,14 +46,12 @@
         </field>
     </record>
 
-    <!-- Action -->
     <record id="action_vismasign_binding" model="ir.actions.act_window">
         <field name="name">Visma Sign Bindings</field>
         <field name="res_model">vismasign.binding</field>
         <field name="view_mode">tree,form</field>
     </record>
 
-    <!-- Menu under Visma Sign root -->
     <menuitem
         id="menu_vismasign_binding"
         name="Bindings"
