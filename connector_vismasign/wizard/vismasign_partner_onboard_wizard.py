@@ -1,6 +1,7 @@
 import json
-import re
 import logging
+import re
+
 from odoo import _, fields, models
 from odoo.exceptions import UserError
 

@@ -5,11 +5,12 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
-from urllib.parse import quote, urlencode, urlsplit, urlunsplit, parse_qsl
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 import requests
+
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -19,8 +20,8 @@ class VismaSignBackend(models.Model):
     Backend connector for communicating with the Visma Sign API.
 
     Supports TWO auth modes:
-      1) HMAC (customer has their own Visma Sign credentials)  -> Authorization: Onnistuu ...
-      2) Partner OAuth2 (you use your partner credentials)     -> Authorization: Bearer <token> + as_organization=<uuid>
+      1) HMAC (customer has their own Visma Sign credentials)
+      2) Partner OAuth2 (you use your partner credentials)
     """
 
     _name = "vismasign.backend"
@@ -40,7 +41,7 @@ class VismaSignBackend(models.Model):
         default="hmac",
         help=(
             "HMAC: customer enters their own Visma Sign API credentials.\n"
-            "Partner: you use partner OAuth2 credentials + 'as_organization' to act on behalf of this customer's org."
+            "Partner: you use partner OAuth2 credentials + 'as_organization' to act on behalf of this customer's org."  # noqa: E501
         ),
     )
 
@@ -63,7 +64,7 @@ class VismaSignBackend(models.Model):
     # The customer org UUID (per customer Odoo installation) used with Partner mode
     as_organization_uuid = fields.Char(
         string="Target organization UUID",
-        help="In Partner mode, all org-API calls will be executed with ?as_organization=<this uuid>.",
+        help="In Partner mode, all org-API calls will be executed with ?as_organization=<this uuid>.",  # noqa: E501
     )
 
     company_id = fields.Many2one(
@@ -77,7 +78,7 @@ class VismaSignBackend(models.Model):
         string="Default category (name)",
         help=(
             "Visma Sign category name to use for created documents. "
-            "If set, the backend will resolve/create the category and attach it to documents."
+            "If set, the backend will resolve/create the category and attach it to documents."  # noqa: E501
         ),
     )
     category_description = fields.Text(
@@ -95,7 +96,7 @@ class VismaSignBackend(models.Model):
 
     inviter_name = fields.Char(
         string="Inviter name",
-        help="Optional. If set, sent as inviter.name (5-50 chars) in invitation payload.",
+        help="Optional. If set, sent as inviter.name (5-50 chars) in invitation payload.",  # noqa: E501
     )
     inviter_email = fields.Char(
         string="Inviter email",
@@ -105,12 +106,12 @@ class VismaSignBackend(models.Model):
     default_sign_as_organization = fields.Boolean(
         string="Default: sign as organization",
         default=False,
-        help="If enabled, invitations will default to sign_as_organization=true unless overridden.",
+        help="If enabled, invitations will default to sign_as_organization=true unless overridden.",  # noqa: E501
     )
     default_sign_as_inviter_organization = fields.Boolean(
         string="Default: sign as inviter's organization",
         default=False,
-        help="Only used if sign_as_organization is true. If enabled, invitations will default to "
+        help="Only used if sign_as_organization is true. If enabled, invitations will default to "  # noqa: E501
         "sign_as_inviter_organization=true unless overridden.",
     )
 
@@ -125,7 +126,7 @@ class VismaSignBackend(models.Model):
             ):
                 raise ValidationError(
                     _(
-                        "Default: sign as inviter's organization requires 'sign as organization' to be enabled."
+                        "Default: sign as inviter's organization requires 'sign as organization' to be enabled."  # noqa: E501
                     )
                 )
 
@@ -157,14 +158,14 @@ class VismaSignBackend(models.Model):
                 if not rec.client_identifier or not rec.secret_key_b64:
                     raise ValidationError(
                         _(
-                            "HMAC mode requires 'client_identifier' and 'secret_key_b64' to be set."
+                            "HMAC mode requires 'client_identifier' and 'secret_key_b64' to be set."  # noqa: E501
                         )
                     )
             elif rec.auth_mode == "partner":
                 if not rec.partner_client_id or not rec.partner_client_secret:
                     raise ValidationError(
                         _(
-                            "Partner mode requires 'partner_client_id' and 'partner_client_secret' to be set."
+                            "Partner mode requires 'partner_client_id' and 'partner_client_secret' to be set."  # noqa: E501
                         )
                     )
 
@@ -239,7 +240,7 @@ class VismaSignBackend(models.Model):
                 timeout=30,
             )
         except requests.RequestException as e:
-            raise UserError(str(e))
+            raise UserError(str(e)) from e
 
         if resp.status_code != 200:
             raise UserError(
@@ -249,8 +250,10 @@ class VismaSignBackend(models.Model):
 
         try:
             data = resp.json()
-        except ValueError:
-            raise UserError(_("Token endpoint did not return JSON:\n%s") % resp.text)
+        except ValueError as e:
+            raise UserError(
+                _("Token endpoint did not return JSON:\n%s") % resp.text  # noqa: E501
+            ) from e
 
         token = data.get("access_token")
         token_type = (data.get("token_type") or "").lower()
@@ -325,7 +328,7 @@ class VismaSignBackend(models.Model):
                 if not self.as_organization_uuid:
                     raise UserError(
                         _(
-                            "Partner mode requires 'as_organization_uuid' for org API calls (document/category/invitation)."
+                            "Partner mode requires 'as_organization_uuid' for org API calls (document/category/invitation)."  # noqa: E501
                         )
                     )
                 final_path = self._append_query_param(
@@ -341,7 +344,7 @@ class VismaSignBackend(models.Model):
         try:
             resp = requests.request(method, url, headers=headers, data=body, timeout=30)
         except requests.RequestException as e:
-            raise UserError(str(e))
+            raise UserError(str(e)) from e
 
         return resp
 
@@ -377,7 +380,7 @@ class VismaSignBackend(models.Model):
             )
         except Exception as e:
             binding.write({"response": str(e), "successful": False})
-            raise UserError(_("Connection failed:\n%s") % e)
+            raise UserError(_("Connection failed:\n%s") % e) from e
 
         if successful:
             raise UserError(
@@ -831,7 +834,7 @@ class VismaSignBackend(models.Model):
         ):
             raise UserError(
                 _(
-                    "Default 'sign as inviter's organization' requires 'sign as organization' to be enabled."
+                    "Default 'sign as inviter's organization' requires 'sign as organization' to be enabled."  # noqa: E501
                 )
             )
 

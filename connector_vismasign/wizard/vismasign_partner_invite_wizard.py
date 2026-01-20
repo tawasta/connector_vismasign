@@ -1,4 +1,5 @@
 import logging
+
 from odoo import _, fields, models
 from odoo.exceptions import UserError
 
@@ -37,7 +38,7 @@ class VismaSignPartnerInviteWizard(models.TransientModel):
         string="Message",
         required=True,
         default=lambda self: _(
-            "Hei!\n\nVoitteko hyväksyä kutsun, jotta voimme liittää organisaationne Visma Sign -partnerimalliin "
+            "Hei!\n\nVoitteko hyväksyä kutsun, jotta voimme liittää organisaationne Visma Sign -partnerimalliin "  # noqa: E501
             "ja käyttää allekirjoituksia suoraan Odoosta?\n\nKiitos!"
         ),
     )
@@ -75,7 +76,7 @@ class VismaSignPartnerInviteWizard(models.TransientModel):
         elif action == "created":
             msg = (
                 _(
-                    "Organization created in Visma Sign (%s). Set as_organization_uuid automatically."
+                    "Organization created in Visma Sign (%s). Set as_organization_uuid automatically."  # noqa: E501
                 )
                 % org_uuid
             )
