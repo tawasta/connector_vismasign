@@ -22,7 +22,7 @@
     "summary": "Visma Sign Connector",
     "version": "17.0.1.0.0",
     "category": "Website",
-    "website": "https://gitlab.com/tawasta/odoo/moodle",
+    "website": "https://gitlab.com/tawasta/odoo/connector_vismasign",
     "author": "Tawasta",
     "license": "AGPL-3",
     "application": False,
@@ -34,5 +34,7 @@
         "security/ir.model.access.csv",
         "views/vismasign_backend_views.xml",
         "views/vismasign_binding_views.xml",
+        "wizard/vismasign_partner_onboard_wizard.xml",
+        "wizard/vismasign_partner_invite_wizard.xml",
     ],
 }
