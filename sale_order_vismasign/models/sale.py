@@ -2,6 +2,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 import logging
 import base64
+from markupsafe import Markup
 
 _logger = logging.getLogger(__name__)
 
@@ -210,9 +211,20 @@ class SaleOrder(models.Model):
                         }
                     )
 
+                salesperson_partner = sale_order.user_id.partner_id
+
+                message_body = Markup(
+                    "<p>The quotation <strong>%s</strong> has been signed in Visma Sign.</p>"
+                ) % sale_order.name
+
+                partner_ids = []
+                if salesperson_partner:
+                    partner_ids.append(salesperson_partner.id)
+
                 sale_order.message_post(
-                    body=_("The quotation has been signed in Visma Sign."),
-                    subtype_xmlid="mail.mt_note",
+                    body=message_body,
+                    subtype_xmlid="mail.mt_comment",
+                    partner_ids=partner_ids,
                 )
 
                 if post_sign_action == "confirm":

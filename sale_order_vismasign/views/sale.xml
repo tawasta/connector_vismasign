@@ -13,6 +13,7 @@
                     type="object"
                     string="Send for Signature"
                     class="btn-primary"
+                    invisible="state not in ('draft', 'sent') or vismasign_invitation_uuid"
                 />
             </xpath>
 
