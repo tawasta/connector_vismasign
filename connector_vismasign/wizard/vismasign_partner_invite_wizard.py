@@ -17,15 +17,15 @@ class VismaSignPartnerInviteWizard(models.TransientModel):
 
     # REQUIRED for create organization if it doesn't exist
     organization_name = fields.Char(string="Organization name", required=True)
-    postal_address = fields.Char(string="Postal address", required=True)
-    postal_code = fields.Char(string="Postal code", required=True)
-    municipality = fields.Char(string="Municipality", required=True)
+    postal_address = fields.Char(string="Postal address", required=False)
+    postal_code = fields.Char(string="Postal code", required=False)
+    municipality = fields.Char(string="Municipality", required=False)
 
     # REQUIRED admin block for create organization
-    admin_identifier = fields.Char(string="Admin identifier", required=True)
-    admin_first_name = fields.Char(string="Admin first name", required=True)
-    admin_last_name = fields.Char(string="Admin last name", required=True)
-    admin_email = fields.Char(string="Admin email", required=True)
+    admin_identifier = fields.Char(string="Admin identifier", required=False)
+    admin_first_name = fields.Char(string="Admin first name", required=False)
+    admin_last_name = fields.Char(string="Admin last name", required=False)
+    admin_email = fields.Char(string="Admin email", required=False)
 
     # REQUIRED for request access (invite)
     lang = fields.Selection(
