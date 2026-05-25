@@ -1,8 +1,10 @@
+import base64
+import logging
+
+from markupsafe import Markup
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-import logging
-import base64
-from markupsafe import Markup
 
 _logger = logging.getLogger(__name__)
 
@@ -10,9 +12,7 @@ _logger = logging.getLogger(__name__)
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    state = fields.Selection(
-        selection_add=[("signed", "Signed Agreement")]
-    )
+    state = fields.Selection(selection_add=[("signed", "Signed Agreement")])
 
     vismasign_document_uuid = fields.Char(readonly=True, copy=False)
     vismasign_file_uuid = fields.Char(readonly=True, copy=False)
@@ -51,16 +51,24 @@ class SaleOrder(models.Model):
                 % self.company_id.display_name
             )
 
-        report_xmlid = self.env["ir.config_parameter"].sudo().get_param(
-            "sale_vismasign.report_xmlid",
-            default="sale.action_report_saleorder",
+        report_xmlid = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "sale_vismasign.report_xmlid",
+                default="sale.action_report_saleorder",
+            )
         )
 
         try:
-            pdf = self.env["ir.actions.report"].sudo()._render_qweb_pdf(
-                report_xmlid,
-                [self.id],
-            )[0]
+            pdf = (
+                self.env["ir.actions.report"]
+                .sudo()
+                ._render_qweb_pdf(
+                    report_xmlid,
+                    [self.id],
+                )[0]
+            )
         except Exception as exc:
             _logger.exception(
                 "Failed to render report %s for sale order %s",
@@ -129,9 +137,13 @@ class SaleOrder(models.Model):
         """
         backends = self.env["vismasign.backend"].search([])
 
-        post_sign_action = self.env["ir.config_parameter"].sudo().get_param(
-            "sale_vismasign.post_sign_action",
-            default="confirm",
+        post_sign_action = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param(
+                "sale_vismasign.post_sign_action",
+                default="confirm",
+            )
         )
 
         for backend in backends:
@@ -213,9 +225,12 @@ class SaleOrder(models.Model):
 
                 salesperson_partner = sale_order.user_id.partner_id
 
-                message_body = Markup(
-                    "<p>The quotation <strong>%s</strong> has been signed in Visma Sign.</p>"
-                ) % sale_order.name
+                message_body = (
+                    Markup(
+                        "<p>The quotation <strong>%s</strong> has been signed in Visma Sign.</p>"
+                    )
+                    % sale_order.name
+                )
 
                 partner_ids = []
                 if salesperson_partner:
