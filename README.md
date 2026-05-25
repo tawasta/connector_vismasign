@@ -11,5 +11,6 @@ Available addons
 addon | version | maintainers | summary
 --- | --- | --- | ---
 [connector_vismasign](connector_vismasign/) | 17.0.1.0.0 |  | Visma Sign Connector
+[sale_order_vismasign](sale_order_vismasign/) | 17.0.1.0.0 |  | Sale Order vismasign
 
 [//]: # (end addons)

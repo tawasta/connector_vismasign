@@ -21,13 +21,13 @@
                 <page name="vismasign" string="Visma Sign">
                     <group>
                         <group string="Status">
-                            <field name="vismasign_status" readonly="1"/>
-                            <field name="vismasign_last_check" readonly="1"/>
+                            <field name="vismasign_status" readonly="1" />
+                            <field name="vismasign_last_check" readonly="1" />
                         </group>
                         <group string="Identifiers">
-                            <field name="vismasign_document_uuid" readonly="1"/>
-                            <field name="vismasign_file_uuid" readonly="1"/>
-                            <field name="vismasign_invitation_uuid" readonly="1"/>
+                            <field name="vismasign_document_uuid" readonly="1" />
+                            <field name="vismasign_file_uuid" readonly="1" />
+                            <field name="vismasign_invitation_uuid" readonly="1" />
                         </group>
                     </group>
                 </page>
