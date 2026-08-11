@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <record id="res_config_settings_view_form_agreement_vismasign" model="ir.ui.view">
+        <field
+            name="name"
+        >res.config.settings.view.form.inherit.agreement.vismasign</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app
+                    string="Agreements"
+                    name="agreement_vismasign"
+                    groups="base.group_system"
+                >
+                    <block name="agreement_vismasign_block" title="Visma Sign">
+                        <setting
+                            id="agreement_vismasign_report_xmlid"
+                            string="Visma Sign Report"
+                            help="Technical report action XML-ID used to generate the PDF sent for signing."
+                        >
+                            <field
+                                name="agreement_vismasign_report_xmlid"
+                                placeholder="agreement_legal.partner_agreement_contract_document"
+                            />
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_agreement_vismasign_config" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'agreement_vismasign'}</field>
+    </record>
+
+    <record id="agreement.agreement_setting_menu" model="ir.ui.menu">
+        <field name="action" ref="action_agreement_vismasign_config" />
+        <field name="groups_id" eval="[(4, ref('base.group_system'))]" />
+    </record>
+
+</odoo>
