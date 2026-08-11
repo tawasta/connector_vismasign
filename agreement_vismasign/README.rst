@@ -20,16 +20,6 @@ Features
 * Download and attach the signed PDF document automatically
 * Multi-company support
 
-Compatibility
-=============
-The base ``agreement`` module does not ship any report action, so a report
-must be configured before this module can be used (see Configuration below).
-
-If ``agreement_legal`` is also installed, it replaces the agreement form view
-with its own, unrelated view instead of extending the base one, which would
-otherwise hide the ``Send for Signature`` button and the ``Visma Sign`` page.
-Install the companion module ``agreement_legal_vismasign`` in that case.
-
 Configuration
 =============
 
@@ -98,7 +88,6 @@ The following technical fields are added to the agreement:
 * ``vismasign_invitation_uuid``
 * ``vismasign_status``
 * ``vismasign_last_check``
-* ``vismasign_signed_attachment_id``
 
 
 Known issues / Roadmap

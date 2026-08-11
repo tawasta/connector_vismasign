@@ -17,9 +17,6 @@ class Agreement(models.Model):
     vismasign_invitation_uuid = fields.Char(readonly=True, copy=False)
     vismasign_status = fields.Char(readonly=True, copy=False, tracking=True)
     vismasign_last_check = fields.Datetime(readonly=True, copy=False)
-    vismasign_signed_attachment_id = fields.Many2one(
-        "ir.attachment", readonly=True, copy=False
-    )
 
     def action_vismasign_send(self):
         """
@@ -134,14 +131,11 @@ class Agreement(models.Model):
         Scheduled task that synchronizes Visma Sign invitation statuses to agreements.
 
         Workflow:
-        - Find agreements that have an invitation UUID and are either not yet
-          marked as signed, or signed but still missing their signed
-          attachment (e.g. a previous attempt to download it failed).
+        - Find agreements that have an invitation UUID and are not yet marked as signed.
         - Fetch the latest invitation status from Visma Sign.
         - Update the local status and timestamp.
         - When the status becomes 'signed':
-            * download the signed PDF (once, kept on
-              ``vismasign_signed_attachment_id``)
+            * download the signed PDF and store it as an attachment
             * post a chatter message
         """
         backends = self.env["vismasign.backend"].search([])
@@ -151,9 +145,7 @@ class Agreement(models.Model):
                 [
                     ("vismasign_invitation_uuid", "!=", False),
                     ("company_id", "=", backend.company_id.id),
-                    "|",
                     ("vismasign_status", "!=", "signed"),
-                    ("vismasign_signed_attachment_id", "=", False),
                 ]
             )
 
@@ -196,7 +188,20 @@ class Agreement(models.Model):
 
     def _process_vismasign_signed(self, agreement, backend):
         """Attach the signed PDF (once) and notify followers."""
-        if not agreement.vismasign_signed_attachment_id:
+        # Technical, non-translated name so the lookup below stays stable
+        # regardless of the user's language.
+        attachment_name = "Agreement - %s (signed).pdf" % agreement.code
+
+        existing_attachment = self.env["ir.attachment"].search(
+            [
+                ("res_model", "=", agreement._name),
+                ("res_id", "=", agreement.id),
+                ("name", "=", attachment_name),
+            ],
+            limit=1,
+        )
+
+        if not existing_attachment:
             try:
                 signed_pdf = backend.get_document_file(
                     agreement.vismasign_document_uuid,
@@ -217,9 +222,9 @@ class Agreement(models.Model):
                 )
                 return
 
-            attachment = self.env["ir.attachment"].create(
+            self.env["ir.attachment"].create(
                 {
-                    "name": _("Agreement - %s (signed).pdf") % agreement.display_name,
+                    "name": attachment_name,
                     "res_model": agreement._name,
                     "res_id": agreement.id,
                     "company_id": agreement.company_id.id,
@@ -228,7 +233,6 @@ class Agreement(models.Model):
                     "mimetype": "application/pdf",
                 }
             )
-            agreement.vismasign_signed_attachment_id = attachment.id
 
         message_body = (
             Markup(
