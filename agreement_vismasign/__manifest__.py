@@ -20,7 +20,7 @@
 {
     "name": "Agreement vismasign",
     "summary": "Agreement vismasign",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.0.1",
     "category": "Contract",
     "website": "https://gitlab.com/tawasta/odoo/connector_vismasign",
     "author": "Tawasta",
@@ -29,11 +29,14 @@
     "installable": True,
     "depends": [
         "agreement",
+        "agreement_sale",
         "connector_vismasign",
     ],
     "data": [
         "data/ir_cron.xml",
         "views/res_config_settings_views.xml",
         "views/agreement.xml",
+        "views/agreement_type.xml",
+        "views/sale_order.xml",
     ],
 }

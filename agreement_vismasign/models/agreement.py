@@ -23,8 +23,10 @@ class Agreement(models.Model):
         Send the agreement PDF to Visma Sign for electronic signing.
 
         Workflow:
-        1. Read the configured report XML-ID from system settings.
-        2. Render the agreement PDF with the configured report.
+        1. Determine the report to use: the report configured on the
+           agreement's type.
+        2. Render the agreement PDF with that report and attach it to the
+           agreement as an audit-trail copy of what was sent.
         3. Create a document in Visma Sign.
         4. Upload the PDF file to the created document.
         5. Send a signing invitation to the customer email.
@@ -32,8 +34,8 @@ class Agreement(models.Model):
 
         Raises:
             UserError: If the agreement is a template, no backend is configured,
-                       no customer email exists, or the configured report cannot
-                       be rendered.
+                       no customer email exists, or no report could be resolved
+                       or rendered.
         """
         self.ensure_one()
 
@@ -43,9 +45,17 @@ class Agreement(models.Model):
         if not self.partner_id.email:
             raise UserError(_("The customer does not have an email address."))
 
-        backend = self.env["vismasign.backend"].search(
-            [("company_id", "=", self.company_id.id)],
-            limit=1,
+        # sudo: vismasign.backend is restricted to
+        # connector.group_connector_manager because it stores API
+        # credentials; the calling user only needs to trigger the send,
+        # not manage the backend configuration
+        backend = (
+            self.env["vismasign.backend"]
+            .sudo()
+            .search(
+                [("company_id", "=", self.company_id.id)],
+                limit=1,
+            )
         )
         if not backend:
             raise UserError(
@@ -53,20 +63,7 @@ class Agreement(models.Model):
                 % self.company_id.display_name
             )
 
-        # sudo: reading a system parameter requires group_system, which the
-        # calling user (e.g. a salesperson) does not necessarily have
-        report_xmlid = (
-            self.env["ir.config_parameter"]
-            .sudo()
-            .get_param("agreement_vismasign.report_xmlid")
-        )
-        if not report_xmlid:
-            raise UserError(
-                _(
-                    "No Visma Sign report is configured. Set the report XML-ID "
-                    "under Settings > Agreements > Visma Sign."
-                )
-            )
+        report = self._get_vismasign_report()
 
         try:
             # sudo: rendering the report is a technical action; the calling
@@ -76,19 +73,32 @@ class Agreement(models.Model):
                 self.env["ir.actions.report"]
                 .sudo()
                 ._render_qweb_pdf(
-                    report_xmlid,
+                    report,
                     [self.id],
                 )[0]
             )
         except Exception as exc:
             _logger.exception(
                 "Failed to render report %s for agreement %s",
-                report_xmlid,
+                report.report_name,
                 self.id,
             )
             raise UserError(
-                _("Failed to render the configured agreement report: %s") % report_xmlid
+                _("Failed to render the configured agreement report: %s")
+                % report.display_name
             ) from exc
+
+        self.env["ir.attachment"].create(
+            {
+                "name": "Agreement - %s (unsigned).pdf" % self.code,
+                "res_model": self._name,
+                "res_id": self.id,
+                "company_id": self.company_id.id,
+                "type": "binary",
+                "datas": base64.b64encode(pdf),
+                "mimetype": "application/pdf",
+            }
+        )
 
         payload = {
             "document": {
@@ -125,6 +135,33 @@ class Agreement(models.Model):
             subtype_xmlid="mail.mt_note",
         )
 
+    def _get_vismasign_report(self):
+        """Resolve the report used to render the document sent to Visma Sign.
+
+        Each agreement type (e.g. lease vs. sale agreements, or the
+        different sale agreement templates) configures its own report via
+        its XML-ID, so different types can use different documents.
+        """
+        self.ensure_one()
+
+        report_xmlid = self.agreement_type_id.report_xmlid
+        if not report_xmlid:
+            raise UserError(
+                _(
+                    "No Visma Sign report is configured for agreement type "
+                    "%(type)s. Set the report XML-ID on the agreement type."
+                )
+                % {"type": self.agreement_type_id.display_name or _("(none)")}
+            )
+
+        report = self.env.ref(report_xmlid, raise_if_not_found=False)
+        if not report:
+            raise UserError(
+                _("The configured Visma Sign report %s could not be found.")
+                % report_xmlid
+            )
+        return report
+
     @api.model
     def cron_update_vismasign_status(self):
         """
@@ -138,7 +175,11 @@ class Agreement(models.Model):
             * download the signed PDF and store it as an attachment
             * post a chatter message
         """
-        backends = self.env["vismasign.backend"].search([])
+        # sudo: vismasign.backend is restricted to
+        # connector.group_connector_manager; this cron runs as a
+        # technical/scheduled action, not as an end-user browsing backend
+        # configuration
+        backends = self.env["vismasign.backend"].sudo().search([])
 
         for backend in backends:
             agreements = self.search(

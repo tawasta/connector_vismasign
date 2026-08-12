@@ -13,8 +13,12 @@ signature status automatically, and downloading signed PDF documents.
 
 Features
 ========
+* Create an agreement directly from a quotation (``agreement_sale``), either
+  manually with a button or automatically on order confirmation
+* Select the document template per agreement type, so lease agreements and
+  the different sale agreement templates each use their own report
 * Send agreements to Visma Sign directly from the agreement form
-* Generate the signed document from a configurable report action
+* Attach a local copy of the rendered (unsigned) document for audit purposes
 * Store Visma Sign document, file, and invitation UUIDs on the agreement
 * Automatic signature status synchronization using a scheduled action
 * Download and attach the signed PDF document automatically
@@ -24,22 +28,37 @@ Configuration
 =============
 
 #. Go to
-   *Agreements -> Settings*
+   *Agreements -> Settings* and configure:
 
-#. Configure the following settings:
+   * **Auto-create Agreement on Order Confirmation**
+     If enabled, confirming a quotation that has an agreement type set
+     automatically creates the linked agreement. Otherwise, use the
+     *Create Agreement* button on the quotation.
 
-   * **Visma Sign Report**
-     Technical XML-ID of the report action used to generate the PDF document.
-     The base ``agreement`` module does not ship a report action, so this
-     must be configured, for example using a report provided by
-     ``agreement_legal`` or a custom report action.
+#. On each *Agreement Type* (*Agreements -> Configuration -> Agreement
+   Types*), set the **Visma Sign Report XML-ID**: the technical XML-ID of
+   the report action used to render the document for agreements of that
+   type, for example ``sale.action_report_saleorder`` or a report provided
+   by ``agreement_legal``. This is required before an agreement of that
+   type can be sent for signature.
 
-#. Ensure that a Visma Sign backend is configured for the company.
+#. Ensure that a Visma Sign backend is configured for the company (requires
+   the **Connector Manager** group (``connector.group_connector_manager``) —
+   see ``connector_vismasign``'s README). Sending an agreement itself does
+   not require this group, since ``action_vismasign_send()`` accesses the
+   backend via ``sudo()``.
 
 Usage
 =====
 
-#. Open an agreement (not a template).
+#. On a quotation, set the **Agreement Type**, then either:
+
+   * click *Create Agreement*, or
+   * confirm the order, if automatic creation is enabled
+
+   This creates an agreement linked to the quotation via ``agreement_id``.
+
+#. Open the agreement (not a template).
 
 #. Click:
 
@@ -49,7 +68,8 @@ Usage
 
 #. The module will:
 
-   * generate the agreement PDF
+   * render the document using the report configured on the agreement's type
+   * attach the rendered PDF to the agreement as an audit-trail copy
    * create a Visma Sign document
    * upload the PDF
    * send the signature invitation to the partner
@@ -88,6 +108,23 @@ The following technical fields are added to the agreement:
 * ``vismasign_invitation_uuid``
 * ``vismasign_status``
 * ``vismasign_last_check``
+
+Agreement Type Fields
+----------------------
+
+* ``report_xmlid``: technical XML-ID of the report action used to render
+  agreements of this type. Required before an agreement of that type can
+  be sent for signature.
+
+Sale Order
+----------
+
+* ``action_create_agreement()``: creates the agreement for the quotation
+  using its ``agreement_type_id`` (from ``agreement_sale``) and links it back
+  via ``agreement_id``.
+* Confirming an order auto-creates the agreement when the
+  ``agreement_vismasign.auto_create_agreement_on_confirm`` system parameter
+  is enabled.
 
 
 Known issues / Roadmap
