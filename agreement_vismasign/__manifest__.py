@@ -18,22 +18,25 @@
 #
 ##############################################################################
 {
-    "name": "Sale Order vismasign",
-    "summary": "Sale Order vismasign",
-    "version": "17.0.1.0.0",
-    "category": "Sale",
+    "name": "Agreement vismasign",
+    "summary": "Agreement vismasign",
+    "version": "17.0.1.0.1",
+    "category": "Contract",
     "website": "https://gitlab.com/tawasta/odoo/connector_vismasign",
     "author": "Tawasta",
     "license": "AGPL-3",
     "application": False,
     "installable": True,
     "depends": [
-        "sale",
+        "agreement",
+        "agreement_sale",
         "connector_vismasign",
     ],
     "data": [
         "data/ir_cron.xml",
         "views/res_config_settings_views.xml",
-        "views/sale.xml",
+        "views/agreement.xml",
+        "views/agreement_type.xml",
+        "views/sale_order.xml",
     ],
 }
