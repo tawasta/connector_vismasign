@@ -36,11 +36,12 @@ Configuration
      *Create Agreement* button on the quotation.
 
 #. On each *Agreement Type* (*Agreements -> Configuration -> Agreement
-   Types*), set the **Visma Sign Report XML-ID**: the technical XML-ID of
-   the report action used to render the document for agreements of that
-   type, for example ``sale.action_report_saleorder`` or a report provided
-   by ``agreement_legal``. This is required before an agreement of that
-   type can be sent for signature.
+   Types*), select the **Visma Sign Report** used to render the document
+   for agreements of that type. Only agreement reports (e.g. provided by
+   ``agreement_legal``) and sale order reports are offered. A sale order
+   report is rendered from the quotation the agreement was created from.
+   This is required before an agreement of that type can be sent for
+   signature.
 
 #. Ensure that a Visma Sign backend is configured for the company (requires
    the **Connector Manager** group (``connector.group_connector_manager``) —
@@ -112,9 +113,10 @@ The following technical fields are added to the agreement:
 Agreement Type Fields
 ----------------------
 
-* ``report_xmlid``: technical XML-ID of the report action used to render
-  agreements of this type. Required before an agreement of that type can
-  be sent for signature.
+* ``report_id``: report used to render agreements of this type. Required
+  before an agreement of that type can be sent for signature. An agreement
+  report is rendered for the agreement itself; a sale order report is
+  rendered for the single quotation linked to the agreement.
 
 Sale Order
 ----------

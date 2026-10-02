@@ -64,6 +64,7 @@ class Agreement(models.Model):
             )
 
         report = self._get_vismasign_report()
+        report_records = self._get_vismasign_report_records(report)
 
         try:
             # sudo: rendering the report is a technical action; the calling
@@ -74,7 +75,7 @@ class Agreement(models.Model):
                 .sudo()
                 ._render_qweb_pdf(
                     report,
-                    [self.id],
+                    report_records.ids,
                 )[0]
             )
         except Exception as exc:
@@ -139,28 +140,55 @@ class Agreement(models.Model):
         """Resolve the report used to render the document sent to Visma Sign.
 
         Each agreement type (e.g. lease vs. sale agreements, or the
-        different sale agreement templates) configures its own report via
-        its XML-ID, so different types can use different documents.
+        different sale agreement templates) configures its own report, so
+        different types can use different documents.
         """
         self.ensure_one()
 
-        report_xmlid = self.agreement_type_id.report_xmlid
-        if not report_xmlid:
+        report = self.agreement_type_id.report_id
+        if not report:
             raise UserError(
                 _(
                     "No Visma Sign report is configured for agreement type "
-                    "%(type)s. Set the report XML-ID on the agreement type."
+                    "%(type)s. Set the report on the agreement type."
                 )
                 % {"type": self.agreement_type_id.display_name or _("(none)")}
             )
-
-        report = self.env.ref(report_xmlid, raise_if_not_found=False)
-        if not report:
-            raise UserError(
-                _("The configured Visma Sign report %s could not be found.")
-                % report_xmlid
-            )
         return report
+
+    def _get_vismasign_report_records(self, report):
+        """Return the records the Visma Sign report is rendered for.
+
+        The report is rendered for records of its own model: the agreement
+        itself, or the quotation the agreement was created from. Rendering a
+        sale order report with the agreement id would print an unrelated
+        order, so the quotation is resolved through ``agreement_id``.
+        """
+        self.ensure_one()
+
+        if report.model == self._name:
+            return self
+
+        if report.model == "sale.order":
+            orders = self.env["sale.order"].search([("agreement_id", "=", self.id)])
+            if len(orders) != 1:
+                raise UserError(
+                    _(
+                        "The Visma Sign report %(report)s is rendered from the "
+                        "quotation, so the agreement must be linked to exactly "
+                        "one quotation (now linked to %(count)s)."
+                    )
+                    % {"report": report.display_name, "count": len(orders)}
+                )
+            return orders
+
+        raise UserError(
+            _(
+                "The Visma Sign report %(report)s is for model %(model)s. Only "
+                "agreement and sale order reports are supported."
+            )
+            % {"report": report.display_name, "model": report.model}
+        )
 
     @api.model
     def cron_update_vismasign_status(self):
