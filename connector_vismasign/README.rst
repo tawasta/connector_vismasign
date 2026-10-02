@@ -76,9 +76,26 @@ Feature-specific modules should:
 
 This connector itself **does NOT implement any business flow**—it only provides the foundation.
 
+Security
+========
+``vismasign.backend`` and ``vismasign.binding`` store API credentials
+(HMAC secrets, OAuth client secrets, cached access tokens) and request/
+response logs, so access is restricted to the standard **Connector Manager**
+group (``connector.group_connector_manager``, shared with the other
+connector modules in this repo, e.g. ``connector_fennoa``). Only users in
+this group see the *Visma Sign* menu (nested under *Connectors*) or can
+read/write these models directly.
+
+Feature-specific modules that call the backend's helper methods
+(``create_document``, ``add_file``, ``send_invitation``, etc.) on behalf of
+an end-user who is not in this group must fetch the backend record via
+``sudo()`` first, with a comment explaining why — see
+``agreement_vismasign``'s ``action_vismasign_send()`` for an example.
+
 Configuration
 =============
-1. Navigate to **Visma Sign → Backends**.
+1. Navigate to **Connectors → Visma Sign → Backends** (requires the
+   **Connector Manager** group).
 2. Create a backend and fill:
 
    * **Company**
@@ -116,9 +133,10 @@ Usage
 =====
 Other modules can import and use the connector like this:
 
-* Find your backend:
+* Find your backend (``sudo()`` is required unless the calling user is in
+  ``connector.group_connector_manager``, see *Security* above):
 
-  ``backend = env["vismasign.backend"].search([], limit=1)``
+  ``backend = env["vismasign.backend"].sudo().search([], limit=1)``
 
 * Create a document:
 
@@ -151,7 +169,7 @@ Other modules can import and use the connector like this:
   ``pdf_bytes = backend.get_document_file(uuid, index=0)``
 
 Bindings allow you to see all requests and responses in Odoo UI for debugging:
-**Visma Sign → Bindings**.
+**Connectors → Visma Sign → Bindings**.
 
 Known issues / Roadmap
 ======================

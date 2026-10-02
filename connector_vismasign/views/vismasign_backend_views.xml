@@ -123,7 +123,13 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_vismasign_root" name="Visma Sign" />
+    <menuitem
+        id="menu_vismasign_root"
+        parent="connector.menu_connector_root"
+        name="Visma Sign"
+        sequence="10"
+        groups="connector.group_connector_manager"
+    />
     <menuitem
         id="menu_vismasign_backend"
         name="Backends"
